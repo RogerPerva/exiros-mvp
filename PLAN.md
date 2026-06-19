@@ -127,6 +127,24 @@ Formato: **Qué falta → por qué importa → qué bloquea → riesgo si se ign
 - Multi-tenant, i18n más allá de español, modo oscuro, PWA offline para la web.
 - Optimización prematura del payload más allá de CSV+GZIP que pide el doc.
 
+### 5.4 Ideas en evaluación (propuestas de Rogelio — sin decidir)
+
+> Capturadas para no perderlas. **No** son decisiones cerradas ni alcance comprometido; se evalúan antes de implementar (algunas con Julio/seniors).
+
+**I-01 — Filtro "operador a pie" (mini-geocerca dinámica + actividad/velocidad).** *(Refinamiento del rastreo — viable en MVP)*
+- **Problema:** el operador se baja del camión (baño, tienda) y camina; el GPS lo registra como "el vehículo se movió un poco", ensuciando la ruta.
+- **Cómo funcionaría** (combina dos señales que la app ya pide en la pantalla de Permisos — ubicación + actividad física):
+  - **Radio de permanencia (mini-geocerca dinámica):** si las nuevas lecturas caen dentro de ~50–80 m del último punto, se considera el mismo lugar → se reenvía la **misma** ubicación en vez de "viajó un poco".
+  - **Actividad + velocidad:** la *Activity Recognition API* de Android clasifica `EN_VEHÍCULO` / `A_PIE` / `QUIETO`. Si detecta "a pie" o velocidad ~0, el operador se bajó y el camión sigue parado.
+- **Viabilidad:** **alta y barata.** `ActivityRecognition` + *distance filter* ya están en el stack (ADR-004); es lógica de filtrado en el cliente, sin infra nueva.
+- **A cuidar:** que el filtro no enmascare una llegada real al destino (no debe impedir el cierre por geocerca); definir umbrales (radio, velocidad, ventana de tiempo) y que sigan siendo configurables como H7.
+
+**I-02 — "Actualizar ubicación" on-demand desde el portal web.** *(Útil, pero arrastra push → Post-MVP)*
+- **Idea:** mantener el refresco automático cada 15–20 min, pero permitir que el monitorista, desde la vista del viaje, pulse **"Actualizar ubicación"** para forzar un envío inmediato (ej. confirmar que el camión ya llegó a la planta/ciudad sin bajar el intervalo global para todos).
+- **Beneficio:** ahorra batería (no se reduce el intervalo de todos), y da inmediatez solo cuando se necesita; en segundo plano se siguen guardando las coordenadas igual.
+- **⚠️ Restricción técnica:** el diseño es **pull desde el dispositivo** (la app hace `POST`, el backend no inicia conexión). Forzar un envío exige un **canal de push al teléfono** (FCM o WebSocket) → es justo lo que §5.2 posterga como Post-MVP. Sin push no hay forma de "despertar" al teléfono on-demand.
+- **Veredicto preliminar:** **Post-MVP.** Alternativa MVP-friendly si urge: un `pendingRefresh` que el backend marca y la app consulta/aplica en su siguiente latido (no es instantáneo, pero no necesita push). A validar con Julio/seniors si vale el costo.
+
 ---
 
 ## 6. Forma de trabajo recomendada
