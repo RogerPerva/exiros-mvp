@@ -69,7 +69,6 @@ Solución **independiente** de rastreo en ruta de camiones de chatarra (patio ve
 - **Bloques (tickets):** id `fase.bloque` (ej. `0.3`, `2.1`); cada uno con módulo, alcance in/out, checkboxes y "Hecho cuando:". Se ejecutan con `/bloque <id>`.
 - **Módulos (etiquetas):** `BE` backend · `WEB` web · `AND` android · `INF` infra · `DOC` docs/specs.
 - **Ramas:** `main` siempre verde + ramas `feat/slice-...` por bloque. Commits convencionales: `feat: fix: refactor: docs: test: chore:`.
-- **Un bloque = un commit limpio** mínimo (granularidad para la auditoría).
 
 ---
 

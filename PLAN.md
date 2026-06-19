@@ -27,12 +27,13 @@ La estrategia de energía del doc (batching, distance filter, *activity recognit
 ### D2 — Cómo el teléfono alcanza el backend en la demo (sin "cloud" formal)
 El doc dice que el despliegue cloud NO es requisito, pero un teléfono real necesita un backend alcanzable por internet para demostrar el flujo.
 
-| Opción | Esfuerzo | Demo en campo |
-| :-- | :-- | :-- |
+| Opción                                                 | Esfuerzo | Demo en campo                                              |
+|:-------------------------------------------------------| :-- |:-----------------------------------------------------------|
 | **A) Túnel (cloudflared / ngrok)** sobre backend local | Mínimo | Sirve, pero la URL cambia y depende de tu laptop encendida |
-| **B) Deploy gratis (Railway / Render / Fly.io)** | Bajo (1–2 h) | Robusto, URL estable, demo independiente de tu laptop |
+| **B) Deploy gratis (Railway / Fly.io)**                | Bajo (1–2 h) | Robusto, URL estable, demo independiente de tu laptop      |
+| **C) Deploy con docker o en local ** | Bajo (1–2 h) | Sin analisis                                               |
 
-- **Recomendación provisional: B (deploy gratis en Railway/Render).** No viola "no se requiere cloud" (no está prohibido, solo no es obligatorio), y elimina el riesgo de que la demo dependa de tu laptop + red local. Para desarrollo diario uso **túnel**, y subo a Railway desde el Día 5. Si prefieres cero cloud, me quedo en túnel.
+- **Recomendación provisional: B (deploy gratis en Railway).** No viola "no se requiere cloud" (no está prohibido, solo no es obligatorio), y elimina el riesgo de que la demo dependa de tu laptop + red local. Para desarrollo diario uso **túnel**, y subo a Railway desde el Día 5. Si prefieres cero cloud, me quedo en túnel.
 - **Decisión registrada en:** `ADR-009`.
 
 > El resto de decisiones técnicas las tomé yo y están justificadas más abajo. Si vetas alguna, lo registramos como cambio de ADR.
@@ -146,12 +147,12 @@ Formato: **Qué falta → por qué importa → qué bloquea → riesgo si se ign
 ## 6. Forma de trabajo recomendada
 
 - **Spec-driven ligero:** antes de cada slice, una mini-spec (qué endpoint, qué pantalla, qué validación, criterio de aceptación). Las specs viven en `/docs`.
-- **Vertical slices:** cada entrega cruza UI → API → lógica → DB. Nunca "todo el backend primero".
+- **Vertical slices:** cada entrega cruza UI → API → lógica → DB. Nunca "todo el backend primero". 
 - **Bala trazadora primero (Día 2–3):** una coordenada hardcodeada que viaje Android → API → DB → punto en el mapa web. Conecta todo antes de pulir nada.
 - **Ciclo de 7 pasos por bloque** (situarse, anunciar, implementar, verificar, commitear, documentar, entregar).
 - **La verdad se ejecuta:** cada slice se prueba contra el sistema real; lo visual se VE renderizado (simulador/teléfono/captura), no solo "compila".
 - **Bitácora en este archivo:** notas fechadas, decisiones de una línea, bloqueos como `> Pendiente externo:`.
-- **Commits pequeños y descriptivos** en `main` (revisable por César/Emanuel en cualquier momento).
+- **Commits pequeños y descriptivos** en `main` 
 - **Validación de código IA:** no se acepta código que no entienda; no cambios masivos sin revisar; no lógica de negocio en controllers; no endpoints sin validación.
 
 ---
