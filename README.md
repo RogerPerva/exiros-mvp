@@ -20,13 +20,14 @@ Leer en este orden al iniciar cualquier sesión:
 | :-- | :-- | :-- |
 | 1 | [`CONTEXT-AI.md`](CONTEXT-AI.md) | **Contexto vivo entre sesiones.** Stack congelado, reglas duras, decisiones cerradas y "▶️ retomar aquí". Leer SIEMPRE primero. |
 | 2 | [`PLAN.md`](PLAN.md) | Plan maestro, backlog de bloques (Fases 1–9) y bitácora. |
-| 3 | [`2026 Exiros alcance MVP On-Route Tracker.md`](2026%20Exiros%20alcance%20MVP%20On-Route%20Tracker.md) | Alcance / requisitos del cliente (fuente de verdad del negocio). |
-| 4 | [`IWA-Exiros - Estrategia Ágil-170626-174841.md`](IWA-Exiros%20-%20Estrategia%20%C3%81gil-170626-174841.md) | Reglas de la competencia interna iWA. |
+| 3 | [`docs/fuente/2026 Exiros alcance MVP On-Route Tracker.md`](docs/fuente/2026%20Exiros%20alcance%20MVP%20On-Route%20Tracker.md) | Alcance / requisitos del cliente (fuente de verdad del negocio). |
+| 4 | [`docs/fuente/IWA-Exiros - Estrategia Ágil-170626-174841.md`](docs/fuente/IWA-Exiros%20-%20Estrategia%20%C3%81gil-170626-174841.md) | Reglas de la competencia interna iWA. |
 
 ### Especificaciones (`/docs`)
 
 | Doc | Contenido |
 | :-- | :-- |
+| [`docs/technical-spec.md`](docs/technical-spec.md) | **Plano de arquitectura:** monolito modular, capas por módulo, estructura del monorepo, seguridad transversal. |
 | [`docs/functional-spec.md`](docs/functional-spec.md) | Máquina de estados (En ruta → Concluido), reglas funcionales S-01…S-07. |
 | [`docs/api-spec.md`](docs/api-spec.md) | Contratos `/api/web/*` (JWT) y `/api/mobile/*` (tripToken), ingesta GZIP idempotente. |
 | [`docs/database-spec.md`](docs/database-spec.md) | 4 entidades (User, Destination, Trip, Location) + borrador `schema.prisma`. |

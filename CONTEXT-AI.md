@@ -13,8 +13,9 @@ Solución **independiente** de rastreo en ruta de camiones de chatarra (patio ve
 1. `~/.agents/METODOLOGIA.md` — cómo se trabaja (protocolo maestro).
 2. `Exiros/CONTEXT-AI.md` — este archivo (contexto específico).
 3. `Exiros/PLAN.md` — plan maestro + backlog de bloques + bitácora.
-4. `Exiros/2026 Exiros alcance MVP On-Route Tracker.md` — alcance/requisitos del cliente (fuente).
-5. `Exiros/IWA-Exiros - Estrategia Ágil-*.md` — reglas de la competencia interna.
+4. `Exiros/docs/technical-spec.md` — plano de arquitectura (capas, módulos, estructura, seguridad).
+5. `Exiros/docs/fuente/2026 Exiros alcance MVP On-Route Tracker.md` — alcance/requisitos del cliente (fuente).
+6. `Exiros/docs/fuente/IWA-Exiros - Estrategia Ágil-*.md` — reglas de la competencia interna.
 
 ## Naturaleza del proyecto (gobierna prioridades)
 - **Competencia interna iWA.** Equipo "Solo": **Rogelio con IA**. El equipo ganador continúa el proyecto.
