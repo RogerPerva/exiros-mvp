@@ -115,3 +115,23 @@ Solución **independiente** de rastreo en ruta de camiones de chatarra (patio ve
 - 2026-06-18: **GPS/energía/permisos = APIs de Android**, Kotlin es solo el lenguaje. `FusedLocationProvider` fusiona GPS+WiFi+celular (menos batería). Permisos runtime A13/14: ubicación precisa + **ubicación en 2º plano** (clave) + activity recognition + foreground service + notificaciones + cámara/galería.
 - 2026-06-19: **Ideas en evaluación de Rogelio (PLAN §5.4, sin decidir):** **I-01** filtro "operador a pie" (mini-geocerca dinámica ~50–80 m + ActivityRecognition/velocidad → reenviar misma ubicación cuando el operador camina; viable y barato, ya en stack ADR-004). **I-02** botón "Actualizar ubicación" on-demand desde la web → choca con diseño *pull*: requiere push (FCM/WebSocket) = Post-MVP; alternativa MVP = flag `pendingRefresh` que la app aplica en su siguiente latido.
 - 2026-06-18: **Sin teléfono físico → emulador.** El emulador SÍ: UI, flujo de permisos, **ruta GPS simulada (GPX)** → demo de cierre por geocerca viable (cubre también H3). El emulador NO: batería real ni battery-killers OEM (es Android puro). → KPI "<10% batería" = objetivo de diseño NO verificado hasta dispositivo real; nunca reportarlo como cumplido sin teléfono.
+
+## Ultimo mensaje que enviaste tu (Opus, arquitecto)
+
+
+> 4. ¿Los bloques ya son "tickets listos"?
+>Parcialmente. Tengo las fases (1–9) y los bloques definidos a alto nivel en PLAN.md §21 — eso es el épica/backlog. Pero un bloque como "1.1
+>scaffolding" todavía no está partido en sub-tareas accionables (ej: "instalar NestJS", "configurar ESLint", "docker-compose de Postgres",
+>"verificar healthcheck"). Eso es justo lo que la metodología hace al ejecutar /bloque 1.1: lo desglosa en pasos con checkpoints.
+> 👉 Si quieres, en la próxima sesión (o ahora si me lo pides) convierto Bloque 1.1 y 1.2 en tickets finos para que veas exactamente qué haré antes
+>     de tocar nada. ¿Lo quieres así de granular, o prefieres que el desglose salga al momento de ejecutar el bloque?
+>
+>5. Playwright para "ver" la vista — sí, recomendado
+>
+>Para que yo vea cómo avanza el front (tomar capturas, verificar que una pantalla renderiza) necesito una herramienta de navegador. Opciones:
+>
+>- Playwright (MCP) → me deja abrir el /web, tomar screenshot y verificar la UI yo mismo. Es la que recomiendo para tu caso: ligera y enfocada.
+>- "Superpowers" es un paquete más amplio de skills; trae más de lo que necesitas ahora. No lo descartes, pero no es requisito para arrancar.
+>
+>No hace falta instalarlo ya — recién sirve cuando exista /web con pantallas. Te aviso en su momento y te paso el comando exacto.
+
