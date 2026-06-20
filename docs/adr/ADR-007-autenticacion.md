@@ -31,7 +31,7 @@ Capas obligatorias sobre `/api/mobile/*`:
 1. **Transporte:** solo **HTTPS/TLS** (lo dan túnel y deploy de ADR-009).
 2. **AuthN — Guard `tripToken`:** rechaza sin token / token inválido / **viaje ya cerrado** / token de **otro dispositivo** (invariante S-05).
 3. **Rate-limit — Interceptor (`@nestjs/throttler`) por tripToken:** un viaje legítimo emite ~1 lote cada 15–20 min; cortar floods. Apoyarse en `lastLocationAt`.
-4. **Validación — `ValidationPipe` + DTO `whitelist`/`forbidNonWhitelisted`:** lat/lng en rango, **timestamp no futuro**, **bbox MX** de cordura, tope de puntos por lote, rechazar campos desconocidos. (NO rechazar coords "fuera de geocerca": la ruta vive fuera de ella.)
+4. **Validación — `ValidationPipe` + DTO `whitelist`/`forbidNonWhitelisted`:** lat/lng en rango, `accuracyMeters` positivo, **timestamp no futuro**, **bbox MX** de cordura, tope de puntos por lote, rechazar campos desconocidos. (NO rechazar coords "fuera de geocerca": la ruta vive fuera de ella.) Para cierre sólo se usan hasta los dos puntos más recientes que cumplen precisión; el lote completo se conserva para ruta.
 5. **Tamaño — límite de body + tope al descomprimir GZIP:** evitar payloads gigantes / zip-bombs (DoS).
 6. **Errores — Exception Filter global:** sin fuga de info interna.
 7. **Observabilidad:** loguear rechazos (token inválido, payload sobredimensionado, coords fuera de rango) para detectar abuso.
@@ -39,6 +39,7 @@ Capas obligatorias sobre `/api/mobile/*`:
 ### Endurecimiento adicional — capas MVP (decidido 2026-06-18)
 8. **`tripToken` hasheado en reposo:** guardar `SHA-256(token)` en BD (como una contraseña), comparar hashes. Si se filtra la BD, los tokens no sirven. Costo ~nulo.
 9. **Idempotencia por lote (`batchId` UUID):** el server ignora lotes duplicados → frena **replays** y duplicados por reintentos de red. Encaja con la cola `syncState` de Android.
+   El cierre manual offline usa además `closeRequestId` UUID: repetir la misma intención devuelve el mismo resultado sin ejecutar una segunda transición.
 10. **Chequeo de "teletransporte":** entre puntos consecutivos, velocidad implícita imposible (>~150 km/h) = sospechoso. Anti-spoofing + calidad de dato. **Marcar/cuarentena, no rechazar en duro** (por jitter de GPS en paradas).
 11. **`helmet` + CORS cerrado:** headers de seguridad; `/api/mobile/*` **sin CORS** (app nativa), `/api/web/*` restringido al origen del portal.
 12. **Rate-limit de borde vía Cloudflare:** el túnel `cloudflared` (ADR-009) ya pasa por Cloudflare → rate-limit por IP y mitigación DDoS **sin código**. Activar y aprovechar.

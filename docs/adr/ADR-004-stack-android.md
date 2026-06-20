@@ -15,6 +15,7 @@ El núcleo del producto es **rastreo en 2º plano con <10% batería/jornada** + 
 - **Foreground Service** + notificación persistente — sobrevivir en 2º plano.
 - **Room** — cola local de ubicaciones con `syncState` (PENDING/SENT/FAILED).
 - **WorkManager** — envío por **lotes GZIP** cada 15–20 min, con reintentos.
+- **Estado durable del viaje** — Room conserva `tripId`, `tripToken`, snapshot de geocerca, puntos y cierre manual pendiente (`closeRequestId/requestedAt`). Reiniciar proceso/app/dispositivo no crea un viaje nuevo ni pierde el activo; se restaura M3 y se reprograma el trabajo.
 
 **Plan B documentado** (red de seguridad, NO el plan): si en la **bala trazadora (Slice 0)** el servicio en 2º plano no resulta viable y no avanzo en ~1 día, salto a un plugin cross-platform (`background_geolocation`) en **build debug** (gratis) solo para no perder la demo. El contrato con el backend no cambia, así que el salto es contenido.
 
@@ -31,4 +32,5 @@ El núcleo del producto es **rastreo en 2º plano con <10% batería/jornada** + 
 ## Riesgos y reversibilidad
 - **Riesgo #1 (2º plano / OEM):** se ataca **temprano** con la bala trazadora; Plan B como escape.
 - **Sin teléfono físico (H6) — deuda de validación explícita:** el emulador permite ver UI, probar el flujo de **permisos** y **reproducir rutas GPS simuladas** → la demo del **cierre por geocerca es viable**. PERO el emulador **NO mide batería real** ni reproduce los battery-killers de OEM → la métrica **"<10% batería/jornada" queda como objetivo de diseño, NO verificado**, hasta probar en dispositivo real. No se reporta como "cumplido".
+- **Reinicio del dispositivo:** WorkManager persiste trabajo, pero Android puede restringir el arranque inmediato del Foreground Service. La app debe restaurar estado automáticamente y reactivar rastreo tan pronto el sistema lo permita o al volver a abrirla; validar este caso en emulador y posteriormente en dispositivo real.
 - **Reversibilidad:** el contrato con el backend (`POST /trips`, `POST /trips/:id/locations` GZIP + `tripToken`) es **agnóstico del cliente** → un eventual salto a Plan B no toca el backend.

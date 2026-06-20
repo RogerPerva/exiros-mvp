@@ -53,7 +53,7 @@ Flujo de una petición: **Controller → Service → Repository → Prisma → D
 | Capa | Responsabilidad | Prohibido |
 | :-- | :-- | :-- |
 | **Controller** | Entrada HTTP, valida la *forma* del request (DTO + ValidationPipe), delega al service | **Lógica de negocio** |
-| **Service** | Reglas de negocio: validaciones de dominio, detección de geocerca (haversine), cierre de viaje, idempotencia | Acceso HTTP; SQL crudo |
+| **Service** | Reglas de negocio: validaciones de dominio, snapshot de destino, detección de geocerca (haversine), cierre de viaje, idempotencia | Acceso HTTP; SQL crudo |
 | **Repository** | Acceso a datos vía Prisma (incl. `createMany` para lotes) | Reglas de negocio |
 | **DTO + Mapper** | Contrato de entrada/salida; traduce entidad↔DTO para no exponer el modelo de persistencia | Duplicar lógica del service |
 | **Prisma schema** | Esquema de persistencia (de `database-spec.md §10`) | — |
@@ -88,7 +88,11 @@ Flujo de una petición: **Controller → Service → Repository → Prisma → D
 | **Exception Filter** | Formato de error único, no fuga de stack traces | global |
 | Log de rechazos | Auditoría de intentos | interceptor |
 
-**Validaciones de ingesta** (functional/api spec): lat/lng en rango, timestamp **no futuro**, bbox MX de cordura, `batchId` idempotente. **NO** se rechazan coords "fuera de geocerca" (toda la ruta está fuera; la geocerca es solo el destino).
+**Validaciones de ingesta** (functional/api spec): lat/lng en rango, timestamp **no futuro**, `accuracyMeters` positivo, bbox MX de cordura, `batchId` idempotente. **NO** se rechazan coords "fuera de geocerca" (toda la ruta está fuera; la geocerca es solo el destino). El lote completo alimenta la ruta; tras persistirlo, el cierre consulta sólo hasta los dos puntos elegibles más recientes por `recordedAt`.
+
+**Inicio idempotente:** Android persiste `clientRequestId` antes de crear el viaje. El backend lo trata como clave única y deriva el mismo `tripToken` con HMAC en cada replay válido; sólo almacena su hash. Esto evita el bloqueo “viaje creado pero respuesta/token perdido”. Usar un secreto exclusivo (`TRIP_TOKEN_DERIVATION_SECRET`), distinto del JWT.
+
+**Destino por ID + snapshot de geocerca:** `destinationId` conserva la relación normalizada y el nombre actual del catálogo; `Trip` copia sólo centro y radio al inicio. El cierre usa esa copia para que una edición posterior no reconfigure viajes activos.
 
 **Principio:** todo dato entrante es hostil hasta validarlo.
 
@@ -107,7 +111,7 @@ Centralizado en un **Exception Filter** global. Códigos: `200/201/400/401/403/4
 ## 6. Acceso a datos (ADR-006 Prisma)
 
 - Modelo declarativo + migraciones versionadas + cliente type-safe.
-- **Ingesta:** `createMany` para insertar el lote de ~10 puntos de una vez (no inserts uno a uno).
+- **Ingesta:** transacción + `createMany` para insertar el lote de ~10 puntos de una vez; `@@unique([tripId,batchId,recordedAt])` y `skipDuplicates` hacen seguro el replay/concurrencia antes de consultar los dos puntos frescos.
 - **Índices** (volumen bajo, ~200 usuarios): `tripId`, `recordedAt`, `trip.status`. **RN-11:** índice único parcial `deviceId WHERE status = EN_RUTA` (impide dos viajes activos por dispositivo).
 - Motor intercambiable: cambiar `provider` + regenerar migraciones (Postgres↔MySQL). Sin PostGIS — geocerca = **haversine en el service** (ADR-012).
 
@@ -139,6 +143,12 @@ Sin SSR (Next.js descartado), sin estado global pesado salvo que se justifique.
 ## 9. Android (ADR-004)
 
 Kotlin nativo. Componentes clave: `FusedLocationProvider` (fusiona GPS+WiFi+celular), `ActivityRecognition` (EN_VEHÍCULO/A_PIE/QUIETO para hibernar), **Foreground Service** (sobrevive en 2º plano), **Room** (cola local con `syncState` PENDING/SENT/FAILED), **WorkManager** (envío por lotes GZIP cada 15–20 min con reintentos).
+
+La app recibe el snapshot de geocerca al crear el viaje y ejecuta la misma haversine local para anticipar el envío. Una posible entrada dispara un **sync prioritario inmediato**, pero Android continúa rastreando. El backend es la única autoridad de `CONCLUIDO`: cierre automático requiere haversine dentro del radio; cierre manual omite esa condición pero exige observaciones. Sólo `stopTracking:true` detiene GPS. Sin push, los cierres hechos desde web se conocen en la siguiente comunicación normal.
+
+**Persistencia y reinicio:** Room guarda viaje/token/geocerca, puntos y cierre manual pendiente. Al recrear proceso/app se restaura M3 y se reprograma WorkManager; tras reinicio del dispositivo se recupera el trabajo persistente y el rastreo se reactiva cuando Android lo permita. Mientras haya viaje o cierre pendiente no se habilita un nuevo inicio.
+
+**Concurrencia de cierre:** todos los caminos usan una transición atómica condicionada por `status=EN_RUTA`. Un mismo `closeRequestId` móvil es replay exitoso; otro actor que perdió la carrera recibe `TRIP_ALREADY_CONCLUDED`.
 
 **Capas:** UI (pantallas M1–M5) → ViewModel → repositorio local (Room) + repositorio remoto (Retrofit/OkHttp) → servicio de ubicación en background.
 

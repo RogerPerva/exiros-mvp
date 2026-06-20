@@ -46,8 +46,9 @@ Definir **qué hace** el sistema (comportamiento observable), no **cómo** lo ha
 **CU-01 — Registrar e iniciar viaje**
 1. El operador abre la app → ve directo el formulario (sin login).
 2. Llena los 7 campos (§6) y adjunta foto (CU-02).
-3. Al validar OK y tocar "Iniciar viaje", se crea el viaje con estado **En ruta** y timestamp de inicio.
+3. La app genera y persiste un `clientRequestId` UUID antes de enviar. Al validar OK y tocar "Iniciar viaje", se crea el viaje con estado **En ruta** y timestamp de inicio.
 4. Arranca el rastreo (CU-03).
+- *Reintento seguro:* repetir la solicitud con el mismo `clientRequestId` devuelve el mismo viaje y la misma credencial derivada; nunca crea un segundo viaje ni deja al dispositivo sin `tripToken` si se perdió la primera respuesta.
 - *Errores:* validación de campos (§6); **sin red no se puede iniciar** (S-04): el inicio requiere conexión para registrar el origen y subir la foto.
 
 **CU-03 — Rastreo en segundo plano**
@@ -57,9 +58,14 @@ Definir **qué hace** el sistema (comportamiento observable), no **cómo** lo ha
 - *Errores:* envío falla → reintento, el lote no se pierde (cola local).
 
 **CU-04 — Cierre automático por geocerca**
-1. El backend recibe un lote y, por cada punto, calcula distancia (haversine) al centro del destino del viaje.
-2. Si algún punto cae **dentro del radio**, marca el viaje **Concluido**, tipo de cierre = *Automático por geocerca*, registra fin = timestamp del punto que entró.
-3. En el siguiente sync, la app recibe la orden de **detener GPS**.
+1. Al crear el viaje, el backend conserva `destinationId`, congela centro/radio del destino y devuelve esa geocerca inmutable a la app.
+2. La app evalúa cada punto con haversine contra ese snapshot. Si detecta entrada, conserva el punto y lanza **de inmediato** un sync prioritario (sin esperar el intervalo normal de 15–20 min), pero continúa rastreando hasta recibir confirmación.
+3. Mientras no hay acuse, la app puede mostrar **“Validando llegada”**. Es un estado local transitorio, no un tercer estado persistido del viaje ni una orden para detener GPS.
+4. El backend valida y persiste las coordenadas del lote para construir la ruta. Después toma **hasta los dos puntos válidos más recientes por `recordedAt` de todo el viaje** (no “dos posiciones del array recibido”), siempre que cumplan el umbral de precisión GPS.
+5. Si cualquiera de esos dos puntos cae dentro del snapshot de radio, marca el viaje **Concluido**, tipo de cierre = *Automático por geocerca* y fin = timestamp del punto dentro más reciente. El resto del lote no decide el cierre; sólo alimenta la ruta.
+6. Si hay cierre, la respuesta `stopTracking:true` lo confirma y la app detiene GPS y pasa a M5. Si ninguno está dentro, el backend mantiene `EN_RUTA`, responde `stopTracking:false` y Android continúa normalmente; no existe un reintento especial de “cierre”, los siguientes puntos vuelven a evaluarse.
+7. Si no hay red, el sync prioritario queda en Room/WorkManager hasta reconectar y Android continúa rastreando; no se espera deliberadamente 15–20 min para intentar el primer envío.
+- *Cierre desde web:* sin push en el MVP, un cierre administrativo se conoce en la siguiente comunicación normal del dispositivo. “Actualizar ubicación” desde web sigue fuera de alcance mientras no exista FCM/WebSocket.
 - *Borde:* puntos que lleguen tras el cierre → se descartan (S-05).
 
 ---
@@ -96,6 +102,7 @@ Estados según doc §6 (columna 11): **solo dos**, `En ruta` y `Concluido`. `Con
 | :-- | :-- | :-- | :-- | :-- | :-- |
 | (none) | Crear viaje válido | En ruta | — | No | Inicia rastreo; timestamp inicio |
 | En ruta | Punto dentro de geocerca | Concluido | Automático por geocerca | No | Orden detener GPS; fin = ts del punto |
+| En ruta | Intento automático con punto fuera | En ruta | — | No | `stopTracking:false`; continúa rastreo |
 | En ruta | Operador finaliza | Concluido | Manual por Operador | **Sí** | Orden detener GPS; fin = ts del cierre |
 | En ruta | Admin fuerza cierre | Concluido | Manual por Administrador | **Sí** | Orden detener GPS; fin = ts del cierre |
 | Concluido | (cualquiera) | — | — | — | Rechazado (terminal) |
@@ -114,7 +121,7 @@ Estados según doc §6 (columna 11): **solo dos**, `En ruta` y `Concluido`. `Con
 - **RN-01** App de acceso libre: ninguna pantalla de login en Android.
 - **RN-02** Los 7 campos del formulario son obligatorios excepto Placa Trasera (opcional).
 - **RN-03** Geocerca = círculo (centro lat/lng + radio en metros). Detección por **haversine**, sin PostGIS.
-- **RN-04** El cierre automático requiere un punto **dentro del radio dentro de un lote recibido** (no se infiere en tránsito) → mitiga falsos positivos al pasar cerca.
+- **RN-04** El cierre automático requiere que al menos uno de los **dos puntos válidos/precisos más recientes del viaje** esté dentro del radio. El lote recibido se persiste completo para ruta, pero puntos anteriores no deciden el cierre.
 - **RN-05** `Duración Total` = `fin − inicio`, formato `HH:MM`, calculada por el sistema.
 - **RN-06** `Estatus` ∈ {En ruta, Concluido}. `Tipo de cierre` ∈ {Automático por geocerca, Manual por Operador, Manual por Administrador}.
 - **RN-07** El reporte Excel tiene **exactamente 13 columnas** (doc §6), en ese orden.
@@ -125,6 +132,15 @@ Estados según doc §6 (columna 11): **solo dos**, `En ruta` y `Concluido`. `Con
 - **RN-12** El **intervalo de envío de lotes es configurable** (S-07): default 15–20 min. El límite no es técnico (podría ser 1 min) sino **cuidar batería y datos móviles**. Si la optimización de energía lo permite, puede reducirse. Tratar como parámetro, no como constante.
 - **RN-13** **Interacción mínima en la app móvil.** Todo el catálogo (destinos/geocercas) se crea y administra **solo desde el portal web** (Admin). La app móvil **no crea ni edita** datos de catálogo: únicamente **consume** las opciones existentes en el dropdown. Toda pantalla/acción que no sea estrictamente necesaria para iniciar/cerrar un viaje queda fuera de la app.
 - **RN-14** **Catálogo de destinos vacío:** si no hay destinos activos, el operador **no puede iniciar viaje** (destino obligatorio, RN-09). La app muestra un **estado vacío** ("No hay destinos disponibles, contacta al administrador") y **bloquea** el inicio; no se rompe. Implica que el Admin debe crear ≥1 destino antes de operar.
+- **RN-15** **Creación idempotente:** `clientRequestId` identifica un único intento lógico de inicio. Repetirlo devuelve el mismo viaje y una credencial reproducible; usarlo con datos incompatibles se rechaza con conflicto.
+- **RN-16** **Geocerca asignada inmutable:** `destinationId` mantiene la relación con el catálogo y su nombre actual; cada viaje conserva únicamente snapshot de centro y radio al iniciarse. Editar la geocerca afecta viajes nuevos, no reconfigura viajes activos.
+- **RN-17** **Validación autoritativa del cierre:** Android puede anticipar una llegada y disparar sync inmediato, pero continúa rastreando. El backend siempre ejecuta la transición: en cierre automático exige `distancia <= radio`; si está fuera conserva `EN_RUTA` y devuelve `stopTracking:false`. En cierre manual no exige geocerca, pero sí observaciones y viaje activo. Sólo `stopTracking:true` detiene GPS.
+- **RN-18** **Dos puntos frescos para geocerca:** después de almacenar el lote, sólo se evalúan los dos `Location` válidos más recientes del viaje por `recordedAt`; basta que uno esté dentro. Si sólo existe uno, se evalúa ese único punto. Los demás puntos se conservan exclusivamente para ruta/histórico.
+- **RN-19** **Precisión GPS:** cada ubicación incluye `accuracyMeters`. Sólo puntos dentro del umbral configurable son candidatos al cierre automático; los demás pueden conservarse para diagnóstico/ruta pero no cierran. Valor inicial propuesto: `50 m`, pendiente contrastar con la tabla de precisión mencionada por negocio.
+- **RN-20** **Recuperación Android:** Room conserva viaje activo, `tripToken`, snapshot de geocerca, puntos y cierres pendientes. Al reiniciar proceso/app o dispositivo, se restaura `EN_RUTA`, se reprograma el trabajo y no se permite iniciar otro viaje.
+- **RN-21** **Radio permitido:** los destinos aceptan radio entre **100 y 700 m**, inclusivo. Default recomendado: `100 m`.
+- **RN-22** **Cierre manual offline:** se guarda en cola con observaciones, `requestedAt` y `closeRequestId`; Android mantiene el viaje como “cierre pendiente” y continúa rastreando hasta confirmación. Al reconectar, el backend usa `requestedAt` como fin si acepta el cierre.
+- **RN-23** **Carrera de cierre:** la transición `EN_RUTA → CONCLUIDO` es atómica y sólo el primer cierre gana. Repetir el mismo `closeRequestId` es idempotente; otro intento posterior recibe `TRIP_ALREADY_CONCLUDED` y la UI informa “El viaje ya fue concluido”.
 
 ---
 
@@ -151,7 +167,9 @@ Estados según doc §6 (columna 11): **solo dos**, `En ruta` y `Concluido`. `Con
 | Campo inválido en formulario | Bloquear envío, marcar campo, mensaje en español |
 | Sin red al iniciar viaje | No se permite iniciar (S-04). Mensaje: "Necesitas conexión para iniciar el viaje." |
 | Sin red al enviar lote | Reintento con backoff; el lote queda en cola local, no se pierde |
+| Sin red al solicitar cierre manual | Guardar cierre en Room, mostrar “Cierre pendiente de sincronizar”, continuar rastreo y reintentar al recuperar conexión |
 | Lote llega a viaje ya Concluido | 200/conflicto controlado; ubicaciones descartadas |
+| Dos cierres compiten | El primero actualiza; el segundo recibe `409 TRIP_ALREADY_CONCLUDED` o la respuesta idempotente si es el mismo `closeRequestId` |
 | Cierre manual sin observación | Rechazar; exigir observación |
 | Token de dispositivo ausente/inválido en ingesta | Rechazar (401/403) |
 | Login web fallido | Mensaje genérico, sin filtrar si existe el usuario |
@@ -169,7 +187,7 @@ Estados según doc §6 (columna 11): **solo dos**, `En ruta` y `Concluido`. `Con
 - [ ] Foto obligatoria desde cámara o galería.
 - [ ] Rastreo recolecta en segundo plano y transmite por lotes cada 15–20 min (GZIP).
 - [ ] Hibernación: con actividad STILL se pausa el GPS.
-- [ ] Cierre automático al entrar a la geocerca + orden de detener GPS.
+- [ ] Cierre automático si cualquiera de los dos puntos frescos/precisos entra a la geocerca + orden de detener GPS.
 - [ ] Cierre manual (operador y admin) exige observaciones.
 - [ ] Mapa web renderiza unidades en ruta, refresco 15–20 min.
 - [ ] CRUD de destinos/geocercas (centro+radio).

@@ -4,7 +4,7 @@
 - **Decide:** motor de base de datos del backend.
 
 ## Contexto
-Datos **relacionales** (`Trip` 1—N `Location`, `Trip` N—1 `Destination`, `User`); el reporte de 13 columnas sale de **joins**. Volumen bajo (lotes de ~10 puntos cada 15–20 min por camión) pero con **escritura de ingesta y lectura web concurrentes**. Requisitos: solución **independiente/aislada** y **código auditable** (concurso). Los seniors pidieron además considerar **tipos de dato espaciales** (ver ADR-012).
+Datos **relacionales** (`Trip` 1—N `Location`, `Trip` N—1 `Destination`, `User`). `destinationId` conserva la relación/nombre del catálogo y cada `Trip` guarda sólo el snapshot de geocerca (centro+radio) asignado al inicio. Volumen bajo (lotes de ~10 puntos cada 15–20 min por camión) pero con **escritura de ingesta y lectura web concurrentes**. Requisitos: solución **independiente/aislada** y **código auditable** (concurso). Los seniors pidieron además considerar **tipos de dato espaciales** (ver ADR-012).
 
 ## Decisión
 **PostgreSQL.**

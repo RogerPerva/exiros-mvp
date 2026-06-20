@@ -75,16 +75,19 @@ El portal **web** (W0–W5) y la app **Android** (M1–M5) son **proyectos disti
 - Confirma que el viaje está activo y rastreando. Info mínima: destino, hora de inicio, **estado de sincronización** (último envío / pendientes).
 - Botón secundario: **"Finalizar viaje"** (→ M4).
 - *Estado sin red:* indicador "Sin conexión — los datos se enviarán al reconectar" (la cola local no se pierde).
+- *Llegada local:* al detectar posible entrada, mantener el rastreo y mostrar brevemente **"Validando llegada"** mientras se intenta el sync prioritario. Sólo detener GPS y mostrar “Viaje concluido” al recibir `stopTracking:true`; si recibe `false`, continuar en M3 sin acción especial.
+- *Recuperación:* si la app/proceso/teléfono reinicia con un viaje activo, restaurar directamente M3 con datos locales y reanudar/reprogramar el rastreo; nunca volver a M2 ni permitir otro viaje.
 
 ### M4 — Finalizar viaje (cierre por operador)
 - Campo **Observaciones** (texto, **obligatorio**, motivo). Sin foto.
 - Botones: "Confirmar cierre" (deshabilitado sin observación) / "Cancelar".
-- Al confirmar → detiene rastreo, va a M5.
+- Al confirmar con red → envía la solicitud y mantiene rastreo hasta recibir `stopTracking:true`; entonces detiene GPS y va a M5.
+- *Sin red:* guardar observaciones, hora de solicitud y `closeRequestId`; mostrar **"Cierre pendiente de sincronizar"**, mantener el rastreo y bloquear un nuevo viaje hasta recibir confirmación. El mismo cierre se reintenta sin duplicarse.
 
 ### M5 — Viaje concluido
-- Mensaje de confirmación (cerrado por: geocerca automática / cierre manual).
+- Mensaje de confirmación (cerrado por: geocerca automática / cierre manual). Sólo se muestra tras confirmación del backend.
 - Botón "Iniciar nuevo viaje" → vuelve a M2.
-- *Nota:* el cierre automático por geocerca también lleva aquí cuando la app recibe `stopTracking` en el siguiente sync.
+- *Nota:* el cierre automático por geocerca lleva aquí al recibir `stopTracking:true`; la detección local dispara ese sync de inmediato y, si no hay red, permanece pendiente hasta reconectar.
 
 ---
 
@@ -113,6 +116,7 @@ El portal **web** (W0–W5) y la app **Android** (M1–M5) son **proyectos disti
 ### W4 — CRUD destinos / geocercas (solo Admin escribe)
 - Lista de destinos (activos/inactivos). Botón "Nuevo destino".
 - Formulario: **nombre**, **centro** (seleccionar punto en mapa Leaflet), **radio en metros** (visualizar el círculo en el mapa). Editar / dar de baja.
+- Radio permitido: **100–700 m**, ambos inclusivos; default recomendado 100 m.
 - *Vacío:* "Aún no hay destinos. Crea el primero."
 
 ### W5 — Gestión de usuarios (solo Admin)
@@ -128,6 +132,7 @@ El portal **web** (W0–W5) y la app **Android** (M1–M5) son **proyectos disti
 | **Carga** | Spinner/skeleton; nunca pantalla en blanco sin feedback. |
 | **Vacío** | Mensaje claro + acción sugerida (no solo "sin datos"). |
 | **Error** | Mensaje en español + botón reintentar; formato `{ message }` de la API. |
+| **Viaje ya concluido** | Mostrar “El viaje ya fue concluido” y refrescar detalle/estado; no ofrecer reintento de cierre. |
 | **Sin red (móvil)** | Indicador persistente; los datos no se pierden (cola local). |
 | **Validación (formularios)** | Inline, por campo, en español; bloquea el envío. |
 

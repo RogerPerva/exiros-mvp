@@ -13,6 +13,9 @@ Cuatro entidades. Volumen bajo (~200 usuarios, lotes de ~10 puntos cada 15–20 
    User ────< (createdBy) Destination ────< Trip >──── (closedBy) User
                                               │
                                               └────< Location
+
+   Trip conserva `destinationId` como FK y además un snapshot inmutable
+   (`destinationLat/Lng/Radius`) para validar la geocerca asignada.
 ```
 
 | Entidad | Qué representa | Origen del dato |
@@ -21,6 +24,19 @@ Cuatro entidades. Volumen bajo (~200 usuarios, lotes de ~10 puntos cada 15–20 
 | **Destination** | Destino del catálogo + su geocerca (centro+radio) | CRUD web (Admin) |
 | **Trip** | Un viaje (las 13 columnas del reporte salen casi todas de aquí) | Creado por la app móvil |
 | **Location** | Un punto GPS de la ruta de un viaje | Ingesta por lotes desde la app |
+
+---
+
+### 1.1 Relaciones y propiedad del dato
+
+| Relación | Cardinalidad | Regla |
+| :-- | :-- | :-- |
+| `Destination` → `Trip` | 1:N | El ID enlaza catálogo y viajes. No se elimina físicamente un destino referenciado. |
+| `Trip` → `Location` | 1:N | Cada punto pertenece exactamente a un viaje; no existe ubicación huérfana. |
+| `User` → `Destination.createdBy` | 1:N | Auditoría de quién creó el destino; puede ser null sólo para seed/migración inicial. |
+| `User` → `Trip.closedBy` | 1:N | Se llena únicamente en cierre web; auto/operador se distinguen por `closureType`. |
+
+**Fuente de lectura:** el catálogo y formularios administrativos leen `Destination`. La operación de geocerca, detalle y reporte de un viaje leen el snapshot guardado en `Trip`. `Location` nunca decide a qué destino pertenece: llega ligada al `tripId` y el viaje aporta su geocerca.
 
 ---
 
@@ -48,7 +64,7 @@ Cuatro entidades. Volumen bajo (~200 usuarios, lotes de ~10 puntos cada 15–20 
 | `name` | String | No nulo | Texto visible en el selector |
 | `centerLat` | Float | No nulo | Centro de la geocerca |
 | `centerLng` | Float | No nulo | |
-| `radiusMeters` | Int | No nulo, > 0 | Radio de llegada (editable, RN-03) |
+| `radiusMeters` | Int | No nulo, 100–700 | Radio de llegada (editable, RN-03/RN-21) |
 | `isActive` | Boolean | default `true` | Soft delete; un destino inactivo no aparece en el dropdown pero los viajes históricos lo conservan |
 | `createdById` | UUID? | FK → User | Auditoría |
 | `createdAt` / `updatedAt` | DateTime | | Auditoría |
@@ -67,7 +83,10 @@ Cuatro entidades. Volumen bajo (~200 usuarios, lotes de ~10 puntos cada 15–20 
 | `folio` | **String** | No nulo, `^[0-9]+$` | **4. Folio/Remito** |
 | `frontPlate` | String | No nulo, regex placa MX | **5. Placa Delantera** |
 | `rearPlate` | String? | Opcional, regex placa MX si viene | **6. Placa Trasera** |
-| `destinationId` | UUID | FK → Destination | **7. Destino** |
+| `destinationId` | UUID | FK → Destination | Relación con el catálogo y filtro estable |
+| `destinationLat` | Float | Snapshot inmutable al iniciar | Centro usado por app y backend para este viaje |
+| `destinationLng` | Float | Snapshot inmutable al iniciar | Centro usado por app y backend para este viaje |
+| `destinationRadiusMeters` | Int | Snapshot inmutable al iniciar, 100–700 | Radio usado para el cierre de este viaje |
 | `startedAt` | DateTime | default now | **8. Fecha/Hora Inicio** |
 | `endedAt` | DateTime? | Se llena 1 sola vez al cerrar | **9. Fecha/Hora Fin** |
 | *(calculado)* | — | `endedAt − startedAt` formato HH:MM | **10. Duración Total** — **NO se almacena**, se deriva (RN-05) |
@@ -76,13 +95,16 @@ Cuatro entidades. Volumen bajo (~200 usuarios, lotes de ~10 puntos cada 15–20 
 | `observations` | String? (text) | Obligatorio **solo si** cierre manual (regla en service) | **13. Observaciones** |
 | `photoPath` | String | No nulo | Foto de carga (ruta del archivo en disco; el binario NO va en BD) |
 | `closedById` | UUID? | FK → User | Quién forzó el cierre (null en auto y en cierre por operador) |
+| `closeRequestId` | UUID? | Único | Idempotencia del cierre manual móvil; null para auto/admin |
 | `deviceId` | String | No nulo | Identidad del dispositivo (RN-11, S-05) |
+| `clientRequestId` | UUID | **Único**, no nulo | Idempotencia del inicio (RN-15); permite recuperar la misma respuesta lógica |
 | `tripTokenHash` | String | **Único** | **Hash** del tripToken (ADR-007 #8); lookup de ingesta por aquí |
 | `lastLocationAt` | DateTime? | | Para rate-limit de ingesta (insumo seniors) |
 | `createdAt` / `updatedAt` | DateTime | | Auditoría |
 
 > **Decisión `providerNumber`/`folio` como String, no Int:** son **identificadores**, no cantidades (no se suman ni promedian) y pueden traer **ceros a la izquierda** que un entero perdería. La validación "solo dígitos" vive en el DTO, no en el tipo de columna.
 > **`closedById` solo en cierre admin:** en cierre automático no hay actor humano; en cierre por operador el actor es el dispositivo (no un User) → queda null y el `closureType` indica el origen.
+> **ID vs snapshot:** `destinationId` responde “qué destino del catálogo se eligió” y permite leer su nombre actual; el snapshot responde “qué geocerca gobernaba cuando arrancó este viaje”. Sólo se duplican centro/radio, porque son necesarios para validar el cierre sin reconfigurar viajes activos.
 
 ---
 
@@ -95,6 +117,7 @@ Cuatro entidades. Volumen bajo (~200 usuarios, lotes de ~10 puntos cada 15–20 
 | `lat` | Float | Validado en rango + bbox MX | No se rechaza por "fuera de geocerca" (la ruta vive fuera) |
 | `lng` | Float | idem | |
 | `recordedAt` | DateTime | **No futuro** (validación) | Timestamp de captura en el dispositivo |
+| `accuracyMeters` | Float | > 0 | Precisión reportada por Android; determina elegibilidad para geocerca |
 | `receivedAt` | DateTime | default now | Timestamp de recepción en el server |
 | `batchId` | UUID | | **Idempotencia de lote** (ADR-007 #9): si ya hay puntos con este `(tripId, batchId)`, el lote se ignora |
 | `createdAt` | DateTime | default now | |
@@ -122,13 +145,17 @@ ClosureType = { AUTO_GEOFENCE, MANUAL_OPERATOR, MANUAL_ADMIN }
 | Trip | `status` | Consulta de viajes activos (mapa) |
 | Trip | `destinationId` | Joins del reporte / por destino |
 | Trip | `tripTokenHash` único | Lookup O(1) en cada lote de ingesta |
+| Trip | `clientRequestId` único | Reintento seguro de creación y recuperación de la misma credencial derivada |
+| Trip | `closeRequestId` único (nullable) | Reintento idempotente del cierre manual offline |
 | Trip | **único parcial** `deviceId WHERE status='EN_RUTA'` | **RN-11 a nivel BD**: imposible tener 2 viajes activos por dispositivo |
 | Location | `(tripId, recordedAt)` | Pintar la ruta ordenada en el mapa |
-| Location | `(tripId, batchId)` | Chequeo de idempotencia de lote |
+| Location | **único** `(tripId, batchId, recordedAt)` | Evita duplicar puntos al repetir/concurrir el mismo lote |
 
 > **Índice único parcial:** Prisma no lo expresa en el schema → se crea con **SQL en la migración**:
 > `CREATE UNIQUE INDEX uniq_active_trip_per_device ON "Trip"("deviceId") WHERE status = 'EN_RUTA';`
 > Es defensa en profundidad: aunque el service falle, la BD garantiza la invariante.
+>
+> **Constraint de radio:** añadir en migración `CHECK ("radiusMeters" BETWEEN 100 AND 700)`; DTO/OpenAPI/UI aplican el mismo rango.
 
 ---
 
@@ -213,6 +240,9 @@ model Trip {
   rearPlate      String?
   destinationId  String
   destination    Destination  @relation(fields: [destinationId], references: [id])
+  destinationLat          Float
+  destinationLng          Float
+  destinationRadiusMeters Int
   photoPath      String
 
   status         TripStatus   @default(EN_RUTA)
@@ -223,8 +253,10 @@ model Trip {
 
   closedById     String?
   closedBy       User?        @relation("TripClosedBy", fields: [closedById], references: [id])
+  closeRequestId String?      @unique
 
   deviceId       String
+  clientRequestId String      @unique
   tripTokenHash  String       @unique
   lastLocationAt DateTime?
 
@@ -245,13 +277,14 @@ model Location {
   trip       Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
   lat        Float
   lng        Float
+  accuracyMeters Float
   recordedAt DateTime
   receivedAt DateTime @default(now())
   batchId    String
   createdAt  DateTime @default(now())
 
   @@index([tripId, recordedAt])
-  @@index([tripId, batchId])
+  @@unique([tripId, batchId, recordedAt])
 }
 ```
 

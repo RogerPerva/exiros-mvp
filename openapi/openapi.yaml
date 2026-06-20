@@ -336,7 +336,7 @@ paths:
     post:
       tags: [Mobile]
       operationId: mobileCreateTrip
-      summary: Crea viaje + emite tripToken (CU-01). multipart con 7 campos + foto (S-04)
+      summary: Crea viaje idempotente + emite tripToken derivable (CU-01/RN-15). multipart con 7 campos + foto
       security: [{ appKey: [] }]
       requestBody:
         required: true
@@ -345,7 +345,7 @@ paths:
             schema: { $ref: '#/components/schemas/CreateTripForm' }
       responses:
         '201':
-          description: Viaje creado. El tripToken se devuelve UNA vez (en BD solo su hash)
+          description: Viaje creado o replay idempotente. El tripToken se puede regenerar por HMAC; en BD sólo vive su hash
           content:
             application/json:
               schema: { $ref: '#/components/schemas/CreateTripResponse' }
@@ -354,6 +354,7 @@ paths:
                 tripToken: "trk_live_9f3a..."
                 status: "EN_RUTA"
                 startedAt: "2026-06-18T15:00:00Z"
+                geofence: { centerLat: 25.6866, centerLng: -100.3161, radiusMeters: 250 }
         '400': { $ref: '#/components/responses/BadRequest' }
         '409': { $ref: '#/components/responses/Conflict' }   # ya hay EN_RUTA en ese deviceId (RN-11)
         '413': { $ref: '#/components/responses/PayloadTooLarge' }
@@ -369,6 +370,8 @@ paths:
         El body viaja con `Content-Encoding: gzip`. El schema describe el JSON ya descomprimido.
         Idempotencia: si (tripId, batchId) ya existe → accepted:0, duplicateBatch:true (no error).
         Si el viaje ya está CONCLUIDO → 200, puntos descartados, stopTracking:true (S-05).
+        Todos los puntos válidos se guardan para ruta; geocerca evalúa sólo hasta los dos más recientes
+        por recordedAt que cumplan el umbral de accuracyMeters. Si cualquiera entra, el backend cierra.
       security: [{ tripToken: [] }]
       parameters: [{ $ref: '#/components/parameters/IdPath' }]
       requestBody:
@@ -377,10 +380,10 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/IngestRequest' }
             example:
-              batchId: "b-uuid-123"
+              batchId: "44444444-4444-4444-8444-444444444444"
               points:
-                - { lat: 25.71, lng: -100.30, recordedAt: "2026-06-18T15:18:00Z" }
-                - { lat: 25.69, lng: -100.31, recordedAt: "2026-06-18T15:36:00Z" }
+                - { lat: 25.71, lng: -100.30, accuracyMeters: 18.5, recordedAt: "2026-06-18T15:18:00Z" }
+                - { lat: 25.69, lng: -100.31, accuracyMeters: 12.0, recordedAt: "2026-06-18T15:36:00Z" }
       responses:
         '200':
           description: Lote procesado
@@ -403,8 +406,8 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/CloseTripRequest' }
-            example: { observations: "Entrega cancelada por el cliente." }
+            schema: { $ref: '#/components/schemas/MobileCloseTripRequest' }
+            example: { observations: "Entrega cancelada por el cliente.", requestedAt: "2026-06-18T17:40:00Z", closeRequestId: "33333333-3333-4333-8333-333333333333" }
       responses:
         '200':
           description: Viaje cerrado (closureType=MANUAL_OPERATOR)
@@ -557,7 +560,7 @@ components:
         name: { type: string }
         centerLat: { type: number, format: double }
         centerLng: { type: number, format: double }
-        radiusMeters: { type: integer, minimum: 1 }
+        radiusMeters: { type: integer, minimum: 100, maximum: 700 }
         isActive: { type: boolean }
     MobileDestination:
       type: object
@@ -566,6 +569,22 @@ components:
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
+    TripGeofenceSnapshot:
+      type: object
+      description: Centro y radio inmutables copiados del destino al iniciar el viaje (RN-16)
+      required: [centerLat, centerLng, radiusMeters]
+      properties:
+        centerLat: { type: number, format: double }
+        centerLng: { type: number, format: double }
+        radiusMeters: { type: integer, minimum: 100, maximum: 700, default: 100 }
+    TripDestinationView:
+      type: object
+      description: Referencia al destino actual más la geocerca asignada al viaje
+      required: [id, name, geofence]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        geofence: { $ref: '#/components/schemas/TripGeofenceSnapshot' }
     CreateDestinationRequest:
       type: object
       required: [name, centerLat, centerLng, radiusMeters]
@@ -573,23 +592,24 @@ components:
         name: { type: string }
         centerLat: { type: number, format: double }
         centerLng: { type: number, format: double }
-        radiusMeters: { type: integer, minimum: 1 }
+        radiusMeters: { type: integer, minimum: 100, maximum: 700 }
     UpdateDestinationRequest:
       type: object
       properties:
         name: { type: string }
         centerLat: { type: number, format: double }
         centerLng: { type: number, format: double }
-        radiusMeters: { type: integer, minimum: 1 }
+        radiusMeters: { type: integer, minimum: 100, maximum: 700 }
         isActive: { type: boolean }
 
     # ---------- Location ----------
     LocationPoint:
       type: object
-      required: [lat, lng, recordedAt]
+      required: [lat, lng, accuracyMeters, recordedAt]
       properties:
         lat: { type: number, format: double }
         lng: { type: number, format: double }
+        accuracyMeters: { type: number, format: double, exclusiveMinimum: true, minimum: 0, description: "Precisión horizontal reportada por Android; umbral de cierre configurable, inicial 50 m" }
         recordedAt: { type: string, format: date-time }
 
     # ---------- Trip ----------
@@ -604,7 +624,7 @@ components:
         folio: { type: string, description: "solo dígitos" }
         frontPlate: { type: string }
         rearPlate: { type: string, nullable: true }
-        destination: { $ref: '#/components/schemas/Destination' }
+        destination: { $ref: '#/components/schemas/TripDestinationView' }
         status: { $ref: '#/components/schemas/TripStatus' }
         startedAt: { type: string, format: date-time }
         endedAt: { type: string, format: date-time, nullable: true }
@@ -640,11 +660,18 @@ components:
       required: [observations]
       properties:
         observations: { type: string, minLength: 1, description: "obligatorio en cierre manual" }
+    MobileCloseTripRequest:
+      type: object
+      required: [observations, requestedAt, closeRequestId]
+      properties:
+        observations: { type: string, minLength: 1, description: "obligatorio en cierre manual" }
+        requestedAt: { type: string, format: date-time, description: "hora del intento; debe ser >= startedAt y no futura fuera de tolerancia; se usa como endedAt aun si sincroniza después" }
+        closeRequestId: { type: string, format: uuid, description: "idempotencia del cierre offline" }
 
     # ---------- Mobile: crear viaje ----------
     CreateTripForm:
       type: object
-      required: [providerNumber, providerName, folio, frontPlate, destinationId, deviceId, photo]
+      required: [providerNumber, providerName, folio, frontPlate, destinationId, deviceId, clientRequestId, photo]
       properties:
         providerNumber: { type: string, pattern: '^[0-9]+$' }
         providerName: { type: string }
@@ -653,22 +680,24 @@ components:
         rearPlate: { type: string, description: "opcional, regex placa MX si viene" }
         destinationId: { type: string, format: uuid }
         deviceId: { type: string }
+        clientRequestId: { type: string, format: uuid, description: "UUID persistido por la app antes del primer intento; clave de idempotencia RN-15" }
         photo: { type: string, format: binary, description: "jpg/png, 1 archivo" }
     CreateTripResponse:
       type: object
-      required: [tripId, tripToken, status, startedAt]
+      required: [tripId, tripToken, status, startedAt, geofence]
       properties:
         tripId: { type: string, format: uuid }
-        tripToken: { type: string, description: "se devuelve UNA vez; guardar en el dispositivo" }
+        tripToken: { type: string, description: "derivado con HMAC; un replay válido de clientRequestId+deviceId obtiene el mismo valor; en BD sólo se guarda el hash" }
         status: { $ref: '#/components/schemas/TripStatus' }
         startedAt: { type: string, format: date-time }
+        geofence: { $ref: '#/components/schemas/TripGeofenceSnapshot' }
 
     # ---------- Mobile: ingesta ----------
     IngestRequest:
       type: object
       required: [batchId, points]
       properties:
-        batchId: { type: string, description: "idempotencia de lote" }
+        batchId: { type: string, format: uuid, description: "idempotencia de lote" }
         points:
           type: array
           items: { $ref: '#/components/schemas/LocationPoint' }

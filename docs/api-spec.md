@@ -124,21 +124,26 @@ Respuesta: `200` con `Content-Type: application/vnd.openxmlformats-officedocumen
 | GET | `/api/mobile/destinations` | catálogo activo para el dropdown (RN-09). Si vacío → `[]` (la app muestra estado vacío, RN-14) |
 | POST | `/api/mobile/trips` | **crea viaje + emite tripToken** (CU-01) |
 
-`POST /api/mobile/trips` — **multipart/form-data** (7 campos + foto en un solo request, S-04):
+`POST /api/mobile/trips` — **multipart/form-data** (7 campos + foto + metadato idempotente en un solo request, S-04/RN-15):
 ```
-Campos: providerNumber, providerName, folio, frontPlate, rearPlate?, destinationId, deviceId
+Campos: providerNumber, providerName, folio, frontPlate, rearPlate?, destinationId, deviceId, clientRequestId
 Archivo: photo (jpg/png, 1 archivo, validar tamaño/tipo)
 ```
 ```json
-// 201 — el tripToken se devuelve UNA sola vez (en BD solo vive su hash)
+// 201 — la misma combinación clientRequestId+deviceId puede regenerar la misma respuesta
 {
   "tripId": "t1",
-  "tripToken": "trk_live_9f3a...",   // guardar en el dispositivo; se envía en cada lote
+  "tripToken": "trk_live_9f3a...",   // derivado con HMAC y secreto de servidor; en BD sólo vive su hash
   "status": "EN_RUTA",
-  "startedAt": "2026-06-18T15:00:00Z"
+  "startedAt": "2026-06-18T15:00:00Z",
+  "geofence": { "centerLat": 25.6866, "centerLng": -100.3161, "radiusMeters": 250 }
 }
 // 400 validación de campos (§6 Functional) · 409 si ya hay un viaje EN_RUTA en ese deviceId (RN-11)
 ```
+
+**Idempotencia de creación (RN-15):** la app genera y guarda `clientRequestId` antes del primer envío. El backend mantiene `clientRequestId` único y deriva el `tripToken` de forma determinista mediante HMAC con un secreto exclusivo del servidor y los identificadores del viaje/dispositivo. Así puede devolver la misma credencial tras una respuesta perdida sin guardar el token en claro. Mismo `clientRequestId` con payload o `deviceId` diferente → `409`.
+
+**Snapshot de geocerca (RN-16):** al crear el viaje se copian centro y radio vigentes al propio viaje; el nombre no se duplica y se consulta mediante `destinationId`. La respuesta devuelve la geocerca asignada para detección local y el backend usa los mismos valores al confirmar.
 
 ### 4.2 Ingesta de ubicaciones (Guard tripToken)
 `POST /api/mobile/trips/:id/locations`
@@ -148,10 +153,10 @@ Headers: Authorization: Bearer <tripToken> · Content-Type: application/json · 
 ```json
 // request (GZIP)
 {
-  "batchId": "b-uuid-123",            // idempotencia (ADR-007 #9)
+  "batchId": "44444444-4444-4444-8444-444444444444", // idempotencia (ADR-007 #9)
   "points": [
-    { "lat": 25.71, "lng": -100.30, "recordedAt": "2026-06-18T15:18:00Z" },
-    { "lat": 25.69, "lng": -100.31, "recordedAt": "2026-06-18T15:36:00Z" }
+    { "lat": 25.71, "lng": -100.30, "accuracyMeters": 18.5, "recordedAt": "2026-06-18T15:18:00Z" },
+    { "lat": 25.69, "lng": -100.31, "accuracyMeters": 12.0, "recordedAt": "2026-06-18T15:36:00Z" }
   ]
 }
 // 200
@@ -162,18 +167,32 @@ Headers: Authorization: Bearer <tripToken> · Content-Type: application/json · 
 }
 ```
 Reglas:
-- **Idempotencia:** si `(tripId, batchId)` ya existe → `accepted:0, duplicateBatch:true` (no error).
+- **Idempotencia:** persistencia y evaluación ocurren en una transacción; el índice único `(tripId,batchId,recordedAt)` impide duplicar puntos incluso con solicitudes concurrentes. Replay completo → `accepted:0, duplicateBatch:true`.
 - **Viaje ya CONCLUIDO:** `200`, puntos **descartados** silenciosamente, `stopTracking:true` (S-05).
 - **Cada punto** pasa validación §5; los inválidos se rechazan (lote válido se acepta parcial, se reporta `accepted`).
+- **Sync prioritario de llegada (RN-17):** si Android detecta entrada local a la geocerca, envía inmediatamente el lote que contiene el punto; no espera el ciclo normal y **continúa rastreando** hasta recibir respuesta.
+- **Intento automático fuera del radio:** el backend no transiciona el viaje; responde `status:EN_RUTA`, `stopTracking:false` y la app sigue con su ciclo normal. No se convierte en cierre manual ni requiere callback separado.
+- **Lote vs cierre:** todos los puntos válidos se persisten para dibujar la ruta. Para cierre automático se consultan únicamente hasta los **dos puntos válidos más recientes del viaje por `recordedAt`**, incluyendo históricos y recién insertados; basta que uno esté dentro del radio. Un punto sólo es candidato si `accuracyMeters` cumple el umbral configurado.
 
 ### 4.3 Cierre por operador (Guard tripToken)
 `POST /api/mobile/trips/:id/close`
 ```json
 // request
-{ "observations": "Entrega cancelada por el cliente." }   // obligatorio (CU-05)
-// 200 → closureType = MANUAL_OPERATOR, endedAt = ahora, stopTracking implícito
+{
+  "observations": "Entrega cancelada por el cliente.",
+  "requestedAt": "2026-06-18T17:40:00Z",
+  "closeRequestId": "33333333-3333-4333-8333-333333333333"
+}
+// 200 → closureType = MANUAL_OPERATOR, endedAt = requestedAt validado, stopTracking implícito
 // 409 si ya CONCLUIDO
 ```
+
+**Reglas distintas por tipo de cierre:**
+- `AUTO_GEOFENCE`: sólo el backend cierra y debe verificar con haversine que al menos un punto recibido esté dentro del snapshot de radio asignado al viaje.
+- `MANUAL_OPERATOR` / `MANUAL_ADMIN`: permite cierre forzoso aunque el punto esté fuera; exige observaciones no vacías, credencial válida y estado `EN_RUTA`.
+- **Offline/idempotencia móvil:** Android persiste `closeRequestId`, `requestedAt` y observaciones en Room. Reintenta al reconectar; el mismo `closeRequestId` devuelve el mismo resultado. `endedAt` usa el `requestedAt` validado, no la hora tardía de reconexión.
+- **Validación de `requestedAt`:** debe ser `>= startedAt` y no futuro más allá de la tolerancia de reloj definida; si falla, `400` y el cierre continúa pendiente para corrección/reintento controlado.
+- **Carrera:** la actualización es condicional (`WHERE status='EN_RUTA'`). Otro cierre distinto que perdió la carrera recibe `409` con código `TRIP_ALREADY_CONCLUDED`; la UI lo presenta como información, no como fallo recuperable.
 
 ---
 
@@ -183,6 +202,7 @@ Reglas:
 | :-- | :-- | :-- |
 | `lat` / `lng` en rango | lat ∈ [-90,90], lng ∈ [-180,180] **y bbox MX de cordura** (lat ~14–33, lng ~ -119 a -86) | punto rechazado |
 | `recordedAt` **no futuro** | ≤ ahora + 2 min de tolerancia de reloj | punto rechazado |
+| `accuracyMeters` | número finito, > 0; para geocerca debe ser ≤ umbral configurable (inicial 50 m, pendiente tabla de negocio) | se almacena, pero no es candidato al cierre si excede umbral |
 | **NO** filtrar "fuera de geocerca" | toda la ruta vive fuera de la geocerca | — (no validar) |
 | Tamaño de lote | máx. N puntos por lote (ej. 500) | `413` |
 | Tamaño de body / GZIP | tope al descomprimir (anti zip-bomb) | `413` |
@@ -193,6 +213,7 @@ Reglas:
 
 ## 6. Notas
 - **Mapa web:** el front hace **polling** a `GET /api/web/trips/active` cada 15–20 min (no hay websockets en MVP, RN-12 / H7).
-- **La app conoce el cierre** (geocerca o admin) por la respuesta de `POST .../locations` (`stopTracking`), no por un endpoint aparte → menos llamadas, coherente con interacción mínima (RN-13).
+- **La app conoce el cierre confirmado** por `stopTracking:true`. Puede anticipar localmente la llegada y disparar el POST de inmediato, pero continúa rastreando y no declara `CONCLUIDO` antes del acuse (RN-17). Sin push, un cierre admin se conoce en la siguiente comunicación normal.
+- **Restauración Android:** viaje activo, token, snapshot, puntos y cierre pendiente sobreviven reinicio de proceso/app/dispositivo mediante Room + WorkManager; no se crea otro viaje mientras exista estado local activo o cierre pendiente.
 - **Bala trazadora (Slice 0):** usará un endpoint desechable y hardcodeado, NO este contrato; este spec es el objetivo al que converge la implementación.
 - **OpenAPI:** formalizado en [`openapi/openapi.yaml`](../openapi/openapi.yaml) (3.0.3, válido, carpeta propia en la raíz) como **puente** para alinear/generar el front antes de que exista el backend. Este `.md` sigue siendo la fuente narrativa; cuando exista el backend NestJS, `@nestjs/swagger` autogenera el OpenAPI desde el código y ese pasa a ser la fuente de verdad (este `.yaml` se descarta para no mantener dos contratos).

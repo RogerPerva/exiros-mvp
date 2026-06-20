@@ -8,9 +8,10 @@ El concurso **audita el código** (la calidad pesa), pero **E2E y pruebas de car
 
 ## Decisión
 **Jest unitario en services + e2e de API con Supertest en endpoints críticos.**
-- **Unit (Jest):** lógica de negocio — **geocerca/haversine**, máquina de estados del viaje, validaciones de campos.
-- **e2e de API (Supertest):** endpoints críticos — `POST /trips`, ingesta de lote `POST /trips/:id/locations` (GZIP + tripToken), cierre automático/manual.
+- **Unit (Jest):** lógica de negocio — **geocerca/haversine**, selección de los dos puntos más recientes por `recordedAt`, filtro `accuracyMeters`, máquina de estados y validaciones.
+- **e2e de API (Supertest):** endpoints críticos — `POST /trips`, ingesta GZIP, persistencia del lote completo, cierre si cualquiera de los dos puntos frescos entra, no-cierre por precisión/rango, cierre manual offline idempotente y carrera entre cierres.
 - **Manual:** flujo móvil en **emulador** (sin teléfono físico, ver ADR-004 / H6); flujo web navegado a mano y **visto renderizado**.
+  Incluir reinicio de proceso/app con viaje activo y recuperación de cierre pendiente; reinicio completo del emulador como evidencia adicional.
 
 ## Alternativas consideradas
 - **TDD estricto:** demasiado lento para vibe-coding con IA en 8 días.
