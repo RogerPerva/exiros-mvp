@@ -42,3 +42,6 @@ desktop.ini
 
 # === Subidas locales (fotos MVP en disco del backend) ===
 uploads/
+
+# === Artefactos de verificación (Playwright MCP) ===
+.playwright-mcp/
