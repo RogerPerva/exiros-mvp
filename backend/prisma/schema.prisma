@@ -1,0 +1,120 @@
+// schema.prisma — generado 1:1 desde docs/database-spec.md §10 (fuente de verdad).
+// Si una entidad cambia, se cambia PRIMERO en la spec.
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  ADMIN
+  MONITOR
+}
+
+enum TripStatus {
+  EN_RUTA
+  CONCLUIDO
+}
+
+enum ClosureType {
+  AUTO_GEOFENCE
+  MANUAL_OPERATOR
+  MANUAL_ADMIN
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         Role     @default(MONITOR)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  createdById  String?
+  createdBy    User?    @relation("UserCreatedBy", fields: [createdById], references: [id])
+  createdUsers User[]   @relation("UserCreatedBy")
+
+  closedTrips         Trip[]        @relation("TripClosedBy")
+  createdDestinations Destination[] @relation("DestinationCreatedBy")
+}
+
+model Destination {
+  id           String   @id @default(uuid())
+  name         String
+  centerLat    Float
+  centerLng    Float
+  radiusMeters Int
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  createdById  String?
+  createdBy    User?    @relation("DestinationCreatedBy", fields: [createdById], references: [id])
+
+  trips        Trip[]
+
+  @@index([isActive])
+}
+
+model Trip {
+  id             String       @id @default(uuid())
+  providerNumber String
+  providerName   String
+  folio          String
+  frontPlate     String
+  rearPlate      String?
+  destinationId  String
+  destination    Destination  @relation(fields: [destinationId], references: [id])
+  destinationLat          Float
+  destinationLng          Float
+  destinationRadiusMeters Int
+  photoPath      String
+
+  status         TripStatus   @default(EN_RUTA)
+  startedAt      DateTime     @default(now())
+  endedAt        DateTime?
+  closureType    ClosureType?
+  observations   String?
+
+  closedById     String?
+  closedBy       User?        @relation("TripClosedBy", fields: [closedById], references: [id])
+  closeRequestId String?      @unique
+
+  deviceId       String
+  clientRequestId String      @unique
+  tripTokenHash  String       @unique
+  lastLocationAt DateTime?
+
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  locations      Location[]
+
+  @@index([status])
+  @@index([destinationId])
+  // Índice único parcial RN-11 (1 viaje EN_RUTA por deviceId): Prisma no expresa
+  // índices parciales con WHERE → se añade como SQL crudo en la migración inicial:
+  //   CREATE UNIQUE INDEX uniq_active_trip_per_device ON "Trip"("deviceId") WHERE status = 'EN_RUTA';
+}
+
+model Location {
+  id         Int      @id @default(autoincrement())
+  tripId     String
+  trip       Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  lat        Float
+  lng        Float
+  accuracyMeters Float
+  recordedAt DateTime
+  receivedAt DateTime @default(now())
+  batchId    String
+  createdAt  DateTime @default(now())
+
+  @@index([tripId, recordedAt])
+  @@unique([tripId, batchId, recordedAt])
+}

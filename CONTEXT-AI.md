@@ -108,6 +108,9 @@ Solución **independiente** de rastreo en ruta de camiones de chatarra (patio ve
 - No re-leer archivos enteros: usar `grep` + lectura por rangos. `token-check.sh` mide la ventana de contexto; `/usage` mide la cuota dura (5h/semana) — son cosas distintas.
 
 ## Notas acumuladas (descubrimientos no-obvios; una línea c/u)
+- 2026-06-21: **Prisma fijado a 6.x** (no 7). Prisma 7.8 rompe: `url=env()` ya NO va en el schema (se mueve a `prisma.config.ts`) y `PrismaClient` exige driver adapter (`@prisma/adapter-pg`). Para Nest + demo estable se eligió v6 (combo probado, `.env` auto-cargado por el CLI). Si se sube a v7, hay que reescribir datasource + adapter del cliente.
+- 2026-06-21: **Enums Prisma = un valor por línea.** El borrador de `database-spec.md §10` tenía `enum Role { ADMIN MONITOR }` en una línea = inválido (`This line is not an enum value definition`). En el `schema.prisma` real van multi-línea.
+- 2026-06-21: **Índice parcial RN-11** no se expresa en `schema.prisma` (Prisma no soporta `WHERE` en índices) → vive como `CREATE UNIQUE INDEX ... WHERE status='EN_RUTA'` dentro de la migración inicial. Si se regenera la migración desde cero, re-añadir ese SQL a mano.
 - 2026-06-17: El "AI" del doc de batería = Fused Location nativo, **no IA propia** en el producto. No confundir alcance.
 - 2026-06-17: El doc menciona iOS (CoreMotion/CoreLocation) pero el alcance es **solo Android** → ruido a ignorar.
 - 2026-06-17: La línea de AWS en el alcance está **tachada** en el doc fuente → cloud no es requisito.
