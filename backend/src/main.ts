@@ -37,4 +37,8 @@ async function bootstrap() {
   setupApp(app);
   await app.listen(process.env.PORT ?? 3000);
 }
-void bootstrap();
+
+// Solo arranca el server si se ejecuta directamente (no al importar setupApp en los e2e).
+if (require.main === module) {
+  void bootstrap();
+}
