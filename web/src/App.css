@@ -1,4 +1,22 @@
-.map-shell {
-  height: 100vh;
-  width: 100vw;
+.portal-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #f5f7fa;
+}
+
+.portal-header {
+  padding: 1rem 1.5rem;
+  background: #1f2a37;
+  color: #fff;
+}
+
+.portal-header h1 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.portal-main {
+  flex: 1;
 }
