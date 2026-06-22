@@ -80,7 +80,14 @@ Solución **independiente** de rastreo en ruta de camiones de chatarra (patio ve
 - **API Spec (Bloque 0.3):** `docs/api-spec.md`. `/api/web/*` (JWT) + `/api/mobile/*`. Bootstrap móvil (leer destinos + crear viaje) ocurre **antes** del tripToken → protegido con `X-App-Key` estática (debilidad documentada) + rate-limit; tripToken protege ingesta. Crear viaje usa `clientRequestId` y token derivable por HMAC para sobrevivir respuesta perdida. Ingesta = GZIP + `batchId` (idempotencia) + respuesta `stopTracking`. Android anticipa geocerca y hace sync prioritario **sin detener GPS**; sólo backend transiciona: automático exige haversine dentro, manual permite forzar con observaciones. Roles: ADMIN superset de MONITOR (matriz §2.2). Dos espacios, un solo Service (regla anti-duplicación §2.1).
 - **UI/UX Spec (Bloque 0.6):** `docs/uiux-spec.md`, brief con límites duros + lista "🚫 NO diseñar" para alimentar a Claude Design. 5 pantallas móvil (M1–M5) + 6 web (W0–W5). **Cierre por operador = solo texto, NO foto** (confirmado en doc fuente líneas 119/195). Para diseñar, pasar a la IA: `uiux-spec.md` + `functional-spec.md`. Web y móvil = sesiones de diseño separadas (distinta plataforma; no comparten componentes).
 - **FASE 0 COMPLETA (2026-06-18):** 4 specs (Functional/API/DB/UI-UX) + 12 ADRs + backlog de implementación (Fases 1–9 en PLAN §21). Rogelio diseña UX/UI en paralelo. **Siguiente del lado código: Bloque 1.1 (scaffolding monorepo + git init + docker-compose Postgres).** Avanzar backend/bala trazadora (independiente del diseño).
-- **▶️ CHECKPOINT 2026-06-21 (LEER ESTO PRIMERO; supera al de 06-19 en lo que toca a código):**
+- **▶️ CHECKPOINT 2026-06-22 (LEER ESTO PRIMERO; supera a 06-21 en lo que toca a código):**
+  **Sesión corta (Opus). Cerrado el frente web del Bloque 2.4 + diagnóstico de huecos. SIN tocar Android, SIN refactors.**
+  - **2.4-web `[WEB]` HECHO** (commit `75c6be7`): el portal lista viajes consumiendo `GET /api/web/trips`. `app.enableCors()` en `main.ts` (origin por `WEB_ORIGIN`, default abierto en dev). Nuevos `web/src/api.ts` (`fetchTrips`/`photoUrl`, base por `VITE_API_URL`) + `TripsList.tsx`/`.css` (tarjetas: badge En ruta/Concluido, foto desde `/uploads`, folio/placa/destino/inicio, estados loading/error/vacío). `App.tsx` = shell del portal (header + lista). **Verificado Playwright** (viaje "En ruta" con foto). **El mapa de 1.3 quedó desplazado** (vive en git) → reintegrar bajo el shell del portal en bloque WEB futuro.
+  - **DIAGNÓSTICO DE HUECOS Fase 1+2** (en `PLAN.md` bitácora 2026-06-22, leerlo): el código está cuidado y el plan ya anticipó lo grande en Fase 8. Lo más urgente para la **auditoría con rúbrica**: **H1 (ALTO)** NO hay tests reales (solo el scaffold "Hello World"; `npm test`=1/1 engaña) → adelantar subset de 8.2 antes de Fase 3; **H2 (ALTO/seg)** defensa en capas incompleta (falta helmet, throttler/rate-limit [no instalado], body-limit, exception filter global, log de rechazos) = Bloque 8.1; **H4** `/api/web/*` sin JWT (cualquiera lista viajes) = 6.1. Detalle H1–H7 + docs redundantes (D-A: `api-spec.md` vs `openapi.yaml`) en la bitácora.
+  - **ESTADO Fases 1+2:** 1.1/1.2/1.3 ✅ · 1.4/1.5 ❌ (Android) · 2.1/2.2 ✅ · 2.3 ❌ (Android) · 2.4 ✅ (BE+WEB). **Falta SOLO Android para cerrar Fase 1+2.**
+  - **SIGUIENTE (sesión fresca):** **sesión Android dedicada 1.4→1.5→2.3** (es lo caro; presupuesto fresco). Emulador: `~/Library/Android/sdk/emulator/emulator -avd Pixel_3a_API_34_extension_level_7_arm64-v8a`. Sin `gradle` en PATH ni Studio → wrapper `./gradlew` (descarga 1ª vez). 1.5 = bala trazadora (1 coord hardcodeada emulador→backend→punto en mapa web). **Para probar el backend ya hecho:** `docker compose -f infra/docker-compose.yml up -d` · `cd backend && npx prisma migrate deploy && node dist/main.js` · sembrar destino con **UUID v4 válido** (psql user `exiros`) · mobile con header `x-app-key: dev-app-key-cambia-en-prod` · web `cd web && npm run dev` (:5173). Gates backend: `cd backend && npm run lint && npm run build && npm test`.
+  - **PENDIENTE de tu decisión (Rogelio):** ¿adelantar tests (8.2 subset) y/o endurecer seguridad (8.1) ANTES de Android, o cerrar Android primero? (Lo recomendado por riesgo de auditoría es adelantar tests, pero Android es lo que falta para "Fase 1+2 completa".)
+- **▶️ CHECKPOINT 2026-06-21 (histórico; superado por 06-22 en lo que toca a código):**
   **Sesión autónoma "Opus a cargo" (semáforo de tokens, paré en ámbar 75%).** Hechos y verificados 4 bloques, commit local por bloque (sin push, por ahorro):
   - **1.1** `[INF]` scaffolding: `/backend /web /android /scripts` + `infra/docker-compose.yml` (Postgres 16, healthy) + `.env.example`. Comando: `docker compose -f infra/docker-compose.yml up -d`.
   - **1.2** `[BE]` NestJS + **Prisma fijado a 6.x** (v7 rompe — ver Notas) + `schema.prisma` (de `database-spec.md §10`) + migración `init` (4 tablas) + **índice parcial RN-11** (SQL crudo en la migración). API arranca y conecta.
@@ -142,21 +149,3 @@ Solución **independiente** de rastreo en ruta de camiones de chatarra (patio ve
 - 2026-06-19: **Ideas en evaluación de Rogelio (PLAN §5.4, sin decidir):** **I-01** filtro "operador a pie" (mini-geocerca dinámica ~50–80 m + ActivityRecognition/velocidad → reenviar misma ubicación cuando el operador camina; viable y barato, ya en stack ADR-004). **I-02** botón "Actualizar ubicación" on-demand desde la web → choca con diseño *pull*: requiere push (FCM/WebSocket) = Post-MVP; alternativa MVP = flag `pendingRefresh` que la app aplica en su siguiente latido.
 - 2026-06-18: **Sin teléfono físico → emulador.** El emulador SÍ: UI, flujo de permisos, **ruta GPS simulada (GPX)** → demo de cierre por geocerca viable (cubre también H3). El emulador NO: batería real ni battery-killers OEM (es Android puro). → KPI "<10% batería" = objetivo de diseño NO verificado hasta dispositivo real; nunca reportarlo como cumplido sin teléfono.
 
-## Ultimo mensaje que enviaste tu (Opus, arquitecto)
-
-
-> 4. ¿Los bloques ya son "tickets listos"?
->Parcialmente. Tengo las fases (1–9) y los bloques definidos a alto nivel en PLAN.md §21 — eso es el épica/backlog. Pero un bloque como "1.1
->scaffolding" todavía no está partido en sub-tareas accionables (ej: "instalar NestJS", "configurar ESLint", "docker-compose de Postgres",
->"verificar healthcheck"). Eso es justo lo que la metodología hace al ejecutar /bloque 1.1: lo desglosa en pasos con checkpoints.
-> 👉 Si quieres, en la próxima sesión (o ahora si me lo pides) convierto Bloque 1.1 y 1.2 en tickets finos para que veas exactamente qué haré antes
->     de tocar nada. ¿Lo quieres así de granular, o prefieres que el desglose salga al momento de ejecutar el bloque?
->
->5. Playwright para "ver" la vista — sí, recomendado
->
->Para que yo vea cómo avanza el front (tomar capturas, verificar que una pantalla renderiza) necesito una herramienta de navegador. Opciones:
->
->- Playwright (MCP) → me deja abrir el /web, tomar screenshot y verificar la UI yo mismo. Es la que recomiendo para tu caso: ligera y enfocada.
->- "Superpowers" es un paquete más amplio de skills; trae más de lo que necesitas ahora. No lo descartes, pero no es requisito para arrancar.
->
->No hace falta instalarlo ya — recién sirve cuando exista /web con pantallas. Te aviso en su momento y te paso el comando exacto.
