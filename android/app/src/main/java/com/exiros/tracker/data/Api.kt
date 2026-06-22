@@ -12,8 +12,14 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
-/** Destino del catálogo (para el dropdown de M2). */
-data class Destination(val id: String, val name: String)
+/** Destino del catálogo (dropdown de M2) + snapshot de geocerca que viaja al estado del viaje. */
+data class Destination(
+    val id: String,
+    val name: String,
+    val centerLat: Double,
+    val centerLng: Double,
+    val radiusMeters: Double,
+)
 
 /** Respuesta de POST /api/mobile/trips. */
 data class TripResult(val tripId: String, val tripToken: String, val status: String)
@@ -42,7 +48,13 @@ class ApiClient {
             val arr = JSONArray(body)
             (0 until arr.length()).map { i ->
                 val o = arr.getJSONObject(i)
-                Destination(o.getString("id"), o.getString("name"))
+                Destination(
+                    id = o.getString("id"),
+                    name = o.getString("name"),
+                    centerLat = o.getDouble("centerLat"),
+                    centerLng = o.getDouble("centerLng"),
+                    radiusMeters = o.getDouble("radiusMeters"),
+                )
             }
         }
     }

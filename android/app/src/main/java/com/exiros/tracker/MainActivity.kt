@@ -1,5 +1,7 @@
 package com.exiros.tracker
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -32,6 +34,7 @@ import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -43,6 +46,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -59,9 +63,12 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import com.exiros.tracker.data.ActiveTripEntity
 import com.exiros.tracker.data.ApiClient
 import com.exiros.tracker.data.Destination
 import com.exiros.tracker.data.DeviceId
+import com.exiros.tracker.data.TripRepository
 import com.exiros.tracker.data.TripResult
 import com.exiros.tracker.ui.BorderGray
 import com.exiros.tracker.ui.ExirosBlue
@@ -72,27 +79,90 @@ import com.exiros.tracker.ui.Success
 import com.exiros.tracker.ui.SurfaceWhite
 import com.exiros.tracker.ui.TextPrimary
 import com.exiros.tracker.ui.TextSecondary
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.util.UUID
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val repo = TripRepository(applicationContext)
         setContent {
             ExirosTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    TripFormScreen()
+                    RootScreen(repo)
                 }
             }
         }
     }
 }
 
+/**
+ * Decide M2 (formulario) vs M3 (en ruta) leyendo el viaje activo de Room. Si existe una fila,
+ * la app restaura M3 directamente al abrir, aunque el proceso se haya reiniciado (criterio 3.1).
+ */
+@Composable
+private fun RootScreen(repo: TripRepository) {
+    val context = LocalContext.current
+
+    // Estado del permiso de ubicación (FINE basta para captura en primer plano en 3.1).
+    var hasLocationPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
+                PackageManager.PERMISSION_GRANTED,
+        )
+    }
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) { result ->
+        hasLocationPermission = result[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+            result[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+    }
+    fun requestLocation() = permissionLauncher.launch(
+        arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION),
+    )
+
+    // Gate de carga: evita el parpadeo del formulario antes de que Room emita el viaje activo.
+    val tripFlow = remember(repo) { repo.activeTrip.map<ActiveTripEntity?, TripLoad> { TripLoad.Ready(it) } }
+    val tripState by tripFlow.collectAsState(initial = TripLoad.Loading)
+
+    when (val s = tripState) {
+        TripLoad.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(color = ExirosBlue)
+        }
+        is TripLoad.Ready -> {
+            val active = s.trip
+            if (active == null) {
+                // Al crear el viaje en M2, persistimos en Room → la app navega sola a M3.
+                TripFormScreen(
+                    onTripStarted = { trip, dest, providerName, folio ->
+                        repo.startTrip(trip, dest, providerName, folio)
+                        if (!hasLocationPermission) requestLocation()
+                    },
+                )
+            } else {
+                EnRutaScreen(
+                    trip = active,
+                    repo = repo,
+                    hasLocationPermission = hasLocationPermission,
+                    onRequestPermission = ::requestLocation,
+                )
+            }
+        }
+    }
+}
+
+/** Estado de carga del viaje activo (separa "aún no sé" de "no hay viaje"). */
+private sealed interface TripLoad {
+    data object Loading : TripLoad
+    data class Ready(val trip: ActiveTripEntity?) : TripLoad
+}
+
 private val fieldShape = RoundedCornerShape(11.dp)
 
 /** Marca "exiros" con la x en azul primario (acento corporativo). */
 @Composable
-private fun ExirosWordmark() {
+fun ExirosWordmark() {
     Text(
         buildAnnotatedString {
             withStyle(SpanStyle(color = ExirosNavy)) { append("e") }
@@ -143,7 +213,9 @@ private fun LabeledField(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TripFormScreen() {
+fun TripFormScreen(
+    onTripStarted: suspend (trip: TripResult, destination: Destination, providerName: String, folio: String) -> Unit,
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val api = remember { ApiClient() }
@@ -167,7 +239,6 @@ fun TripFormScreen() {
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     var isError by remember { mutableStateOf(false) }
-    var lastTrip by remember { mutableStateOf<TripResult?>(null) }
 
     val photoPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia()
@@ -312,9 +383,10 @@ fun TripFormScreen() {
                                     photoMime = photoMime,
                                 )
                             }.onSuccess { res ->
-                                lastTrip = res
-                                setMsg("Viaje creado ✓ ${res.status} (id ${res.tripId.take(8)}…)", false)
+                                setMsg("Viaje creado ✓ ${res.status}", false)
                                 clientRequestId = UUID.randomUUID().toString()
+                                // Persistir en Room → RootScreen navega a M3 automáticamente.
+                                onTripStarted(res, selected!!, providerName.trim(), folio.trim())
                             }.onFailure {
                                 setMsg("Error: ${it.message}", true)
                             }
@@ -333,34 +405,6 @@ fun TripFormScreen() {
             Icon(Icons.Filled.PlayArrow, contentDescription = null)
             Spacer(Modifier.width(8.dp))
             Text(if (busy) "Enviando…" else "Iniciar viaje", fontWeight = FontWeight.SemiBold)
-        }
-
-        // Bala trazadora (Slice 0): tras crear el viaje, manda 1 coord hardcodeada.
-        lastTrip?.let { trip ->
-            Button(
-                onClick = {
-                    busy = true
-                    scope.launch {
-                        runCatching {
-                            api.sendLocation(
-                                tripId = trip.tripId,
-                                tripToken = trip.tripToken,
-                                lat = 25.6700,
-                                lng = -100.3000,
-                                accuracyMeters = 12.0,
-                            )
-                        }.onSuccess { setMsg("Ubicación enviada ✓ (25.6700, -100.3000)", false) }
-                            .onFailure { setMsg("Error al enviar ubicación: ${it.message}", true) }
-                        busy = false
-                    }
-                },
-                enabled = !busy,
-                shape = fieldShape,
-                colors = ButtonDefaults.buttonColors(containerColor = ExirosNavy),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("Enviar ubicación de prueba (bala trazadora)")
-            }
         }
 
         message?.takeIf { it.isNotBlank() }?.let {
