@@ -5,6 +5,8 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHash, createHmac } from 'node:crypto';
+import { unlink } from 'node:fs/promises';
+import { join } from 'node:path';
 import { Prisma, type Trip } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTripDto } from './dto/create-trip.dto';
@@ -31,6 +33,11 @@ export class TripsService {
     return createHash('sha256').update(token).digest('hex');
   }
 
+  /** Borra una foto recién subida que no se llegó a usar (idempotencia/errores). */
+  private async discardOrphan(photoPath: string): Promise<void> {
+    await unlink(join(process.cwd(), photoPath)).catch(() => undefined);
+  }
+
   private toResponse(trip: Trip, token: string) {
     return {
       tripId: trip.id,
@@ -45,7 +52,7 @@ export class TripsService {
     };
   }
 
-  async create(dto: CreateTripDto) {
+  async create(dto: CreateTripDto, photoPath: string) {
     const token = this.deriveToken(dto.deviceId, dto.clientRequestId);
 
     // Idempotencia RN-15: misma solicitud previa → misma respuesta (sin duplicar).
@@ -53,6 +60,7 @@ export class TripsService {
       where: { clientRequestId: dto.clientRequestId },
     });
     if (existing) {
+      await this.discardOrphan(photoPath); // la foto recién subida no se reutiliza
       if (!this.samePayload(existing, dto)) {
         throw new ConflictException(
           'clientRequestId ya usado con otro payload o deviceId',
@@ -66,6 +74,7 @@ export class TripsService {
       where: { id: dto.destinationId, isActive: true },
     });
     if (!dest) {
+      await this.discardOrphan(photoPath);
       throw new BadRequestException('destinationId inexistente o inactivo');
     }
 
@@ -81,7 +90,7 @@ export class TripsService {
           destinationLat: dest.centerLat,
           destinationLng: dest.centerLng,
           destinationRadiusMeters: dest.radiusMeters,
-          photoPath: 'PENDING', // la foto se sube en el Bloque 2.2 (multipart)
+          photoPath,
           deviceId: dto.deviceId,
           clientRequestId: dto.clientRequestId,
           tripTokenHash: this.hashToken(token),
@@ -94,6 +103,7 @@ export class TripsService {
         e.code === 'P2002'
       ) {
         // Carrera: clientRequestId duplicado → idempotente; si no, RN-11 (viaje activo).
+        await this.discardOrphan(photoPath);
         const again = await this.prisma.trip.findUnique({
           where: { clientRequestId: dto.clientRequestId },
         });
