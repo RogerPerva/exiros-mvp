@@ -26,6 +26,9 @@ interface TripResp {
 }
 interface IngestResp {
   stored: number;
+  received: number;
+  skipped: number;
+  stopTracking: boolean;
 }
 interface WebTrip {
   id: string;
@@ -43,6 +46,7 @@ describe('Flujo móvil (e2e)', () => {
 
   const deviceId = `e2e-${Date.now()}`;
   const crid = `crid-${Date.now()}`;
+  const batchId = randomUUID();
   // Bytes arbitrarios; el ParseFilePipe valida por mimetype declarado (skipMagicNumbers).
   const photo = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]);
 
@@ -63,12 +67,21 @@ describe('Flujo móvil (e2e)', () => {
       });
   }
 
+  // recordedAt fijo (1 min atrás) → reenviar el lote por defecto es byte-idéntico, así el
+  // índice único tripId+batchId+recordedAt puede demostrar idempotencia.
+  const recordedAt = new Date(Date.now() - 60_000).toISOString();
   function point() {
+    return { lat: 25.67, lng: -100.3, accuracyMeters: 12, recordedAt };
+  }
+
+  // Lote de ingesta (3.4): un batchId + array de puntos. `batchId` fijo por defecto para
+  // poder probar idempotencia (reenviar el mismo lote no duplica).
+  function batch(
+    over: { batchId?: string; points?: ReturnType<typeof point>[] } = {},
+  ) {
     return {
-      lat: 25.67,
-      lng: -100.3,
-      accuracyMeters: 12,
-      recordedAt: new Date().toISOString(),
+      batchId: over.batchId ?? batchId,
+      points: over.points ?? [point()],
     };
   }
 
@@ -180,25 +193,59 @@ describe('Flujo móvil (e2e)', () => {
   it('POST /trips/:id/locations sin Bearer → 401', async () => {
     const res = await request(app.getHttpServer())
       .post(`/api/mobile/trips/${tripId}/locations`)
-      .send(point());
+      .send(batch());
     expect(res.status).toBe(401);
   });
 
-  it('POST /trips/:id/locations con tripToken válido → 201', async () => {
+  it('POST /trips/:id/locations con tripToken válido → 201, almacena el lote', async () => {
     const res = await request(app.getHttpServer())
       .post(`/api/mobile/trips/${tripId}/locations`)
       .set('Authorization', `Bearer ${tripToken}`)
-      .send(point());
+      .send(batch());
     const body = res.body as IngestResp;
     expect(res.status).toBe(201);
     expect(body.stored).toBe(1);
+    expect(body.stopTracking).toBe(false);
+  });
+
+  it('reenviar el mismo batchId es idempotente → stored 0', async () => {
+    const res = await request(app.getHttpServer())
+      .post(`/api/mobile/trips/${tripId}/locations`)
+      .set('Authorization', `Bearer ${tripToken}`)
+      .send(batch()); // mismo batchId + mismo punto que el test anterior
+    const body = res.body as IngestResp;
+    expect(res.status).toBe(201);
+    expect(body.stored).toBe(0);
+  });
+
+  it('descarta puntos fuera de México (skipped), no rompe el lote', async () => {
+    const res = await request(app.getHttpServer())
+      .post(`/api/mobile/trips/${tripId}/locations`)
+      .set('Authorization', `Bearer ${tripToken}`)
+      .send(
+        batch({
+          batchId: randomUUID(),
+          points: [
+            {
+              lat: 48.85,
+              lng: 2.35,
+              accuracyMeters: 10,
+              recordedAt: new Date().toISOString(),
+            },
+          ],
+        }),
+      );
+    const body = res.body as IngestResp;
+    expect(res.status).toBe(201);
+    expect(body.stored).toBe(0);
+    expect(body.skipped).toBe(1);
   });
 
   it('tripToken de un viaje no corresponde a otro :id → 403', async () => {
     const res = await request(app.getHttpServer())
       .post(`/api/mobile/trips/${randomUUID()}/locations`)
       .set('Authorization', `Bearer ${tripToken}`)
-      .send(point());
+      .send(batch());
     expect(res.status).toBe(403);
   });
 

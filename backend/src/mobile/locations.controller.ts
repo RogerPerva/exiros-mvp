@@ -11,13 +11,14 @@ import {
 import type { Request } from 'express';
 import type { Trip } from '@prisma/client';
 import { TripTokenGuard } from '../common/trip-token.guard';
-import { CreateLocationDto } from './dto/create-location.dto';
+import { IngestBatchDto } from './dto/ingest-batch.dto';
 import { LocationsService } from './locations.service';
 
 /**
- * POST /api/mobile/trips/:id/locations — ingesta de la bala trazadora (Slice 0).
+ * POST /api/mobile/trips/:id/locations — ingesta de ruta por lotes GZIP (3.4).
  * Guard: tripToken (Bearer). El token resuelve el viaje; el :id de la URL debe
- * coincidir con ese viaje (no se ingiere a un viaje ajeno al token).
+ * coincidir con ese viaje (no se ingiere a un viaje ajeno al token). El cuerpo llega
+ * comprimido (`Content-Encoding: gzip`), que body-parser infla antes de validar.
  */
 @UseGuards(TripTokenGuard)
 @Controller('mobile/trips/:id/locations')
@@ -28,12 +29,12 @@ export class MobileLocationsController {
   @HttpCode(201)
   add(
     @Param('id') id: string,
-    @Body() dto: CreateLocationDto,
+    @Body() dto: IngestBatchDto,
     @Req() req: Request & { trip: Trip },
   ) {
     if (req.trip.id !== id) {
       throw new ForbiddenException('El tripToken no corresponde a este viaje');
     }
-    return this.locations.addPoint(id, dto);
+    return this.locations.addBatch(id, dto);
   }
 }
