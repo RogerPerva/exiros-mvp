@@ -29,7 +29,11 @@ export default function UsuarioPanel({
 
   async function onSave() {
     if (!name.trim() || !role || (!editing && (!email.trim() || password.length < 8))) {
-      setError('Completa los campos (contraseña mínimo 8 caracteres).');
+      setError(
+        editing
+          ? 'Completa los campos.'
+          : 'Completa los campos (contraseña mínimo 8 caracteres).',
+      );
       return;
     }
     setSaving(true);
@@ -79,7 +83,9 @@ export default function UsuarioPanel({
           value={role}
           onChange={(e) => setRole(e.target.value as Role)}
         >
-          <option value="">Selecciona un rol</option>
+          <option value="" disabled hidden>
+            Selecciona un rol
+          </option>
           {ROLES.map((r) => (
             <option key={r.value} value={r.value}>
               {r.label}
