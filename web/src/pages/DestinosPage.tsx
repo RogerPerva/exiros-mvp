@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { MapPin, Map, Pencil, Ban, RotateCcw } from 'lucide-react';
 import {
   fetchDestinations,
   setDestinationActive,
@@ -78,7 +79,9 @@ export default function DestinosPage() {
             <tbody>
               {destinos.map((d) => (
                 <tr key={d.id} className={d.isActive ? '' : 'row-inactive'}>
-                  <td className="viajes-folio">📍 {d.name}</td>
+                  <td className="viajes-folio">
+                    <MapPin size={15} className="inline-icon" /> {d.name}
+                  </td>
                   <td className="mono">
                     {d.centerLat.toFixed(3)}, {d.centerLng.toFixed(3)}
                   </td>
@@ -90,7 +93,7 @@ export default function DestinosPage() {
                       target="_blank"
                       rel="noreferrer"
                     >
-                      🗺 Maps
+                      <Map size={14} className="inline-icon" /> Maps
                     </a>
                   </td>
                   <td>
@@ -103,13 +106,13 @@ export default function DestinosPage() {
                       title="Editar"
                       onClick={() => setModal({ open: true, editing: d })}
                     >
-                      ✏️
+                      <Pencil size={16} />
                     </button>
                     <button
                       title={d.isActive ? 'Dar de baja' : 'Restaurar'}
                       onClick={() => void toggleActive(d)}
                     >
-                      {d.isActive ? '🚫' : '↩️'}
+                      {d.isActive ? <Ban size={16} /> : <RotateCcw size={16} />}
                     </button>
                   </td>
                 </tr>

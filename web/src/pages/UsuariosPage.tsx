@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Pencil, Ban, RotateCcw } from 'lucide-react';
 import {
   fetchUsers,
   setUserActive,
@@ -130,18 +131,18 @@ export default function UsuariosPage() {
                   </td>
                   <td className="dest-actions">
                     <button title="Editar" onClick={() => setPanel({ open: true, editing: u })}>
-                      ✏️
+                      <Pencil size={16} />
                     </button>
                     {u.isActive ? (
                       <button title="Dar de baja" onClick={() => setConfirmBaja(u)}>
-                        🚫
+                        <Ban size={16} />
                       </button>
                     ) : (
                       <button
                         title="Restaurar"
                         onClick={() => void setUserActive(u.id, true).then(load)}
                       >
-                        ↩️
+                        <RotateCcw size={16} />
                       </button>
                     )}
                   </td>

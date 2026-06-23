@@ -7,6 +7,7 @@ import {
   useMapEvents,
 } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
+import { X } from 'lucide-react';
 import {
   createDestination,
   updateDestination,
@@ -79,7 +80,7 @@ export default function DestinoModal({
         <div className="modal-head">
           <h2>{destino ? 'Editar destino' : 'Nuevo destino'}</h2>
           <button className="modal-x" onClick={onClose}>
-            ✕
+            <X size={18} />
           </button>
         </div>
 

@@ -1,4 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom';
+import { Map, Truck, MapPin, Users, LogOut } from 'lucide-react';
 import { useAuth } from './auth-context';
 import './Layout.css';
 
@@ -26,24 +27,24 @@ export default function Layout() {
         </div>
         <nav className="shell-nav">
           <NavLink to="/mapa" className="shell-navitem">
-            <span className="shell-navicon">🗺️</span> Mapa
+            <Map className="shell-navicon" size={18} /> Mapa
           </NavLink>
           <NavLink to="/viajes" className="shell-navitem">
-            <span className="shell-navicon">🚚</span> Viajes
+            <Truck className="shell-navicon" size={18} /> Viajes
           </NavLink>
           {isAdmin && (
             <NavLink to="/destinos" className="shell-navitem">
-              <span className="shell-navicon">📍</span> Destinos
+              <MapPin className="shell-navicon" size={18} /> Destinos
             </NavLink>
           )}
           {isAdmin && (
             <NavLink to="/usuarios" className="shell-navitem">
-              <span className="shell-navicon">👥</span> Usuarios
+              <Users className="shell-navicon" size={18} /> Usuarios
             </NavLink>
           )}
         </nav>
         <button className="shell-logout" onClick={logout}>
-          ⏻ Cerrar sesión
+          <LogOut size={16} /> Cerrar sesión
         </button>
       </aside>
 

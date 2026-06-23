@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { exportReport, type ReportFilters, type Trip, type TripStatus } from '../api';
 import { useTrips } from '../useTrips';
@@ -145,7 +146,7 @@ export default function ViajesPage() {
                           navigate(`/viajes/${t.id}`);
                         }}
                       >
-                        👁
+                        <Eye size={16} />
                       </button>
                     </td>
                   </tr>

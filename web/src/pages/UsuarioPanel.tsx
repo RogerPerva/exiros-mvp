@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { X, Eye, EyeOff } from 'lucide-react';
 import { createUser, updateUser, type Role, type StaffUser } from '../api';
 import './usuarios.css';
 
@@ -50,7 +51,7 @@ export default function UsuarioPanel({
         <div className="modal-head">
           <h2>{editing ? 'Editar usuario' : 'Nuevo usuario'}</h2>
           <button className="modal-x" onClick={onClose}>
-            ✕
+            <X size={18} />
           </button>
         </div>
 
@@ -98,7 +99,7 @@ export default function UsuarioPanel({
                 onChange={(e) => setPassword(e.target.value)}
               />
               <button type="button" className="panel-eye" onClick={() => setShowPass((s) => !s)}>
-                {showPass ? '🙈' : '👁'}
+                {showPass ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
           </>

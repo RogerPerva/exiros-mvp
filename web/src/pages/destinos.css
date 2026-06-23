@@ -37,6 +37,22 @@
   text-decoration: none;
   font-weight: 600;
   font-size: 0.82rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+/* Icono lucide alineado con el texto en celdas de tabla */
+.inline-icon {
+  vertical-align: -2px;
+  color: #64748b;
+}
+.dest-actions button {
+  display: inline-flex;
+  align-items: center;
+  color: #64748b;
+}
+.dest-actions button:hover {
+  color: #1d6fe0;
 }
 .row-inactive td {
   opacity: 0.55;
