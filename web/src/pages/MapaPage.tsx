@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import TripsMap from '../TripsMap';
 import { useTrips } from '../useTrips';
 import type { Trip } from '../api';
-import { deriveState, STATE_COLOR, STATE_LABEL, type MapState } from '../tripState';
+import { deriveState, MAP_STATES, STATE_COLOR, STATE_LABEL, type MapState } from '../tripState';
 import './page.css';
 import './mapa.css';
 import './viajes.css';
@@ -77,7 +77,7 @@ export default function MapaPage() {
       </div>
 
       <div className="kpi-row">
-        {(['EN_RUTA', 'DETENIDO', 'CONCLUIDO'] as MapState[]).map((s) => (
+        {MAP_STATES.map((s) => (
           <button
             key={s}
             className={`kpi kpi--${s.toLowerCase()} ${estado === s ? 'kpi--on' : ''}`}
@@ -134,7 +134,7 @@ export default function MapaPage() {
             <TripsMap trips={filtered} selectedId={selectedId} onSelect={setSelectedId} />
             <div className="map-legend">
               <span className="map-legend-title">Estado del viaje</span>
-              {(['EN_RUTA', 'DETENIDO', 'CONCLUIDO'] as MapState[]).map((s) => (
+              {MAP_STATES.map((s) => (
                 <span key={s} className="map-legend-row">
                   <i style={{ background: STATE_COLOR[s] }} /> {STATE_LABEL[s]}
                 </span>

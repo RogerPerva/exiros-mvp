@@ -19,6 +19,9 @@ export function deriveState(t: Trip, now: number = Date.now()): MapState {
   return 'EN_RUTA';
 }
 
+/** Orden canónico de los estados (KPIs, leyenda, selector). Fuente única para no repetirlo. */
+export const MAP_STATES: MapState[] = ['EN_RUTA', 'DETENIDO', 'CONCLUIDO'];
+
 export const STATE_LABEL: Record<MapState, string> = {
   EN_RUTA: 'En ruta',
   DETENIDO: 'Detenido',

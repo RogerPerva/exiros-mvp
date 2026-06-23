@@ -161,11 +161,15 @@ function ClusterLayer({
         fillOpacity: 0.9,
         weight: 2,
       });
-      marker.bindPopup(
-        `<strong>${trip.folio}</strong> · ${trip.frontPlate}<br/>${trip.providerName}<br/>${
-          trip.destination?.name ?? '—'
-        } · ${STATE_LABEL[state]}`,
-      );
+      // DOM con textContent (no HTML interpolado): los campos vienen de la app móvil de
+      // acceso libre → evita XSS almacenado en el navegador del monitorista.
+      const el = document.createElement('div');
+      const title = document.createElement('strong');
+      title.textContent = trip.folio;
+      el.append(title, ` · ${trip.frontPlate}`, document.createElement('br'));
+      el.append(trip.providerName, document.createElement('br'));
+      el.append(`${trip.destination?.name ?? '—'} · ${STATE_LABEL[state]}`);
+      marker.bindPopup(el);
       marker.on('click', () => onSelect?.(trip.id));
       group.addLayer(marker);
     }
