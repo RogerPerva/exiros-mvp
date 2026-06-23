@@ -63,6 +63,9 @@
   font-size: 0.9rem;
   font-weight: 700;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
 }
 .btn-danger:hover {
   background: #b91c1c;

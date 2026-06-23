@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { MapPin, Map, Pencil, Ban, RotateCcw } from 'lucide-react';
+import { MapPin, Map, Pencil, Trash2, RotateCcw } from 'lucide-react';
 import {
   fetchDestinations,
   setDestinationActive,
@@ -10,6 +10,7 @@ import { useAuth } from '../auth-context';
 import DestinoModal from './DestinoModal';
 import './page.css';
 import './destinos.css';
+import './usuarios.css';
 
 /** W4 Destinos (10.5): tabla de geocercas + alta/edición (modal) + baja/restaurar. */
 export default function DestinosPage() {
@@ -20,6 +21,7 @@ export default function DestinosPage() {
     open: false,
     editing: null,
   });
+  const [confirmBaja, setConfirmBaja] = useState<Destination | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -36,13 +38,19 @@ export default function DestinosPage() {
     void load();
   }, [load]);
 
-  async function toggleActive(d: Destination) {
+  async function setActive(d: Destination, active: boolean) {
     try {
-      await setDestinationActive(d.id, !d.isActive);
+      await setDestinationActive(d.id, active);
       await load();
     } catch {
       alert('No se pudo cambiar el estado del destino.');
     }
+  }
+
+  async function doBaja() {
+    if (!confirmBaja) return;
+    await setActive(confirmBaja, false);
+    setConfirmBaja(null);
   }
 
   return (
@@ -108,12 +116,15 @@ export default function DestinosPage() {
                     >
                       <Pencil size={16} />
                     </button>
-                    <button
-                      title={d.isActive ? 'Dar de baja' : 'Restaurar'}
-                      onClick={() => void toggleActive(d)}
-                    >
-                      {d.isActive ? <Ban size={16} /> : <RotateCcw size={16} />}
-                    </button>
+                    {d.isActive ? (
+                      <button title="Dar de baja" onClick={() => setConfirmBaja(d)}>
+                        <Trash2 size={16} />
+                      </button>
+                    ) : (
+                      <button title="Restaurar" onClick={() => void setActive(d, true)}>
+                        <RotateCcw size={16} />
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -138,6 +149,26 @@ export default function DestinosPage() {
             void load();
           }}
         />
+      )}
+
+      {confirmBaja && (
+        <div className="modal-overlay" onClick={() => setConfirmBaja(null)}>
+          <div className="confirm" onClick={(e) => e.stopPropagation()}>
+            <h3>Dar de baja destino</h3>
+            <p>
+              ¿Estás seguro de dar de baja <strong>{confirmBaja.name}</strong>? Dejará de estar
+              disponible para nuevos viajes.
+            </p>
+            <div className="panel-actions">
+              <button className="btn-ghost" onClick={() => setConfirmBaja(null)}>
+                Cancelar
+              </button>
+              <button className="btn-danger" onClick={() => void doBaja()}>
+                <Trash2 size={15} /> Sí, dar de baja
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </section>
   );

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pencil, Ban, RotateCcw } from 'lucide-react';
+import { Pencil, Trash2, RotateCcw } from 'lucide-react';
 import {
   fetchUsers,
   setUserActive,
@@ -135,7 +135,7 @@ export default function UsuariosPage() {
                     </button>
                     {u.isActive ? (
                       <button title="Dar de baja" onClick={() => setConfirmBaja(u)}>
-                        <Ban size={16} />
+                        <Trash2 size={16} />
                       </button>
                     ) : (
                       <button
@@ -186,7 +186,7 @@ export default function UsuariosPage() {
                 Cancelar
               </button>
               <button className="btn-danger" onClick={() => void doBaja()}>
-                Sí, dar de baja
+                <Trash2 size={15} /> Sí, dar de baja
               </button>
             </div>
           </div>
