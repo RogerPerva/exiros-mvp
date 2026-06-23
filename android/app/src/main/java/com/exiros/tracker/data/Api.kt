@@ -138,7 +138,10 @@ class ApiClient {
         client.newCall(req).execute().use { res ->
             val resBody = res.body?.string().orEmpty()
             if (!res.isSuccessful) error("batch HTTP ${res.code}: $resBody")
-            runCatching { JSONObject(resBody).optBoolean("stopTracking", false) }.getOrDefault(false)
+            // Contrato IngestResponse: { accepted, duplicateBatch, trip: { status, stopTracking } }.
+            runCatching {
+                JSONObject(resBody).getJSONObject("trip").optBoolean("stopTracking", false)
+            }.getOrDefault(false)
         }
     }
 

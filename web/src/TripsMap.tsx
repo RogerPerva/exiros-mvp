@@ -3,9 +3,9 @@ import 'leaflet/dist/leaflet.css';
 import type { Trip } from './api';
 
 /**
- * Mapa del portal (W1 mínimo / bala trazadora). Pinta el último punto de cada viaje
- * activo + la geocerca de su destino. Usa CircleMarker para evitar el problema de
- * los iconos PNG de Leaflet con bundlers (Vite).
+ * Mapa de tránsito W1. Pinta el último punto de cada viaje EN_RUTA + la geocerca de su
+ * destino. Usa CircleMarker para evitar el problema de los iconos PNG de Leaflet con
+ * bundlers (Vite). El refresco (polling) lo controla App.tsx.
  */
 export default function TripsMap({ trips }: { trips: Trip[] }) {
   // Mapa de tránsito = sólo camiones EN_RUTA (un viaje concluido no está "en tránsito").

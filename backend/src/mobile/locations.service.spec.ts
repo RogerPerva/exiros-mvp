@@ -3,17 +3,14 @@ import { IngestBatchDto } from './dto/ingest-batch.dto';
 
 describe('LocationsService.addBatch', () => {
   let prisma: {
-    location: { createMany: jest.Mock; findMany: jest.Mock };
+    location: { createMany: jest.Mock };
     trip: { updateMany: jest.Mock };
   };
   let service: LocationsService;
 
   beforeEach(() => {
     prisma = {
-      location: {
-        createMany: jest.fn().mockResolvedValue({ count: 0 }),
-        findMany: jest.fn().mockResolvedValue([]),
-      },
+      location: { createMany: jest.fn().mockResolvedValue({ count: 0 }) },
       trip: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
     };
     service = new LocationsService(prisma as never);
@@ -41,12 +38,11 @@ describe('LocationsService.addBatch', () => {
       },
     ]);
 
-    const res = await service.addBatch('trip-1', dto);
+    const res = await service.addBatch('trip-1', dto, 'EN_RUTA');
 
-    expect(res.stored).toBe(2);
-    expect(res.received).toBe(2);
-    expect(res.skipped).toBe(0);
-    expect(res.stopTracking).toBe(false);
+    expect(res.accepted).toBe(2);
+    expect(res.duplicateBatch).toBe(false);
+    expect(res.trip).toEqual({ status: 'EN_RUTA', stopTracking: false });
     const calls = prisma.location.createMany.mock.calls as Array<
       [
         {
@@ -82,14 +78,31 @@ describe('LocationsService.addBatch', () => {
     ]);
     prisma.location.createMany.mockResolvedValue({ count: 1 });
 
-    const res = await service.addBatch('trip-1', dto);
+    const res = await service.addBatch('trip-1', dto, 'EN_RUTA');
 
-    expect(res.received).toBe(3);
-    expect(res.skipped).toBe(2);
+    expect(res.accepted).toBe(1); // sólo el válido se persiste
+    expect(res.duplicateBatch).toBe(false); // no es un reenvío, son puntos inválidos
     const calls = prisma.location.createMany.mock.calls as Array<
       [{ data: unknown[] }]
     >;
     expect(calls[0][0].data).toHaveLength(1); // sólo el válido llega a la BD
+  });
+
+  it('lote repetido (válidos pero todos duplicados) → accepted 0, duplicateBatch true', async () => {
+    prisma.location.createMany.mockResolvedValue({ count: 0 }); // índice único descartó todo
+    const dto = batch([
+      {
+        lat: 25.67,
+        lng: -100.3,
+        accuracyMeters: 12,
+        recordedAt: '2026-06-22T15:00:00.000Z',
+      },
+    ]);
+
+    const res = await service.addBatch('trip-1', dto, 'EN_RUTA');
+
+    expect(res.accepted).toBe(0);
+    expect(res.duplicateBatch).toBe(true);
   });
 
   it('si no hay puntos válidos, no inserta ni toca lastLocationAt', async () => {
@@ -102,10 +115,10 @@ describe('LocationsService.addBatch', () => {
       }, // 0,0 fuera de MX
     ]);
 
-    const res = await service.addBatch('trip-1', dto);
+    const res = await service.addBatch('trip-1', dto, 'EN_RUTA');
 
-    expect(res.stored).toBe(0);
-    expect(res.skipped).toBe(1);
+    expect(res.accepted).toBe(0);
+    expect(res.duplicateBatch).toBe(false);
     expect(prisma.location.createMany).not.toHaveBeenCalled();
     expect(prisma.trip.updateMany).not.toHaveBeenCalled();
   });

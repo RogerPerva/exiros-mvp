@@ -23,7 +23,7 @@ export class WebTripsService {
         destination: {
           select: { name: true, centerLat: true, centerLng: true },
         },
-        // Último punto de ruta para pintarlo en el mapa (Slice 0 / bala trazadora).
+        // Último punto de ruta (alimentado por los lotes de ingesta) para pintarlo en el mapa W1.
         locations: {
           orderBy: { recordedAt: 'desc' },
           take: 1,

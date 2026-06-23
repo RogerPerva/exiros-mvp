@@ -2,6 +2,7 @@
 
 > **Bloque 0.3.** Contrato de la API. Deriva de la Functional Spec (casos de uso, reglas, validaciones), la Database Spec (entidades) y ADR-007 (auth). Un front podría mockear la API solo con este doc.
 > Si un endpoint cambia, se cambia **aquí primero** (regla dura: no cambiar API sin actualizar API Spec).
+> **Fuente normativa = `openapi/openapi.yaml`** (contrato verificable por máquina). Este doc es la narrativa que lo explica; ante discrepancia, gana el openapi. (Cierra D-A.)
 
 ---
 

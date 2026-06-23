@@ -26,7 +26,7 @@ export class MobileLocationsController {
   constructor(private readonly locations: LocationsService) {}
 
   @Post()
-  @HttpCode(201)
+  @HttpCode(200)
   add(
     @Param('id') id: string,
     @Body() dto: IngestBatchDto,
@@ -35,6 +35,6 @@ export class MobileLocationsController {
     if (req.trip.id !== id) {
       throw new ForbiddenException('El tripToken no corresponde a este viaje');
     }
-    return this.locations.addBatch(id, dto);
+    return this.locations.addBatch(id, dto, req.trip.status);
   }
 }

@@ -25,10 +25,9 @@ interface TripResp {
   geofence: { radiusMeters: number };
 }
 interface IngestResp {
-  stored: number;
-  received: number;
-  skipped: number;
-  stopTracking: boolean;
+  accepted: number;
+  duplicateBatch: boolean;
+  trip: { status: string; stopTracking: boolean };
 }
 interface WebTrip {
   id: string;
@@ -197,28 +196,31 @@ describe('Flujo móvil (e2e)', () => {
     expect(res.status).toBe(401);
   });
 
-  it('POST /trips/:id/locations con tripToken válido → 201, almacena el lote', async () => {
+  it('POST /trips/:id/locations con tripToken válido → 200, almacena el lote', async () => {
     const res = await request(app.getHttpServer())
       .post(`/api/mobile/trips/${tripId}/locations`)
       .set('Authorization', `Bearer ${tripToken}`)
       .send(batch());
     const body = res.body as IngestResp;
-    expect(res.status).toBe(201);
-    expect(body.stored).toBe(1);
-    expect(body.stopTracking).toBe(false);
+    expect(res.status).toBe(200);
+    expect(body.accepted).toBe(1);
+    expect(body.duplicateBatch).toBe(false);
+    expect(body.trip.status).toBe('EN_RUTA');
+    expect(body.trip.stopTracking).toBe(false);
   });
 
-  it('reenviar el mismo batchId es idempotente → stored 0', async () => {
+  it('reenviar el mismo batchId es idempotente → accepted 0, duplicateBatch true', async () => {
     const res = await request(app.getHttpServer())
       .post(`/api/mobile/trips/${tripId}/locations`)
       .set('Authorization', `Bearer ${tripToken}`)
       .send(batch()); // mismo batchId + mismo punto que el test anterior
     const body = res.body as IngestResp;
-    expect(res.status).toBe(201);
-    expect(body.stored).toBe(0);
+    expect(res.status).toBe(200);
+    expect(body.accepted).toBe(0);
+    expect(body.duplicateBatch).toBe(true);
   });
 
-  it('descarta puntos fuera de México (skipped), no rompe el lote', async () => {
+  it('descarta puntos fuera de México (no se persisten), no rompe el lote', async () => {
     const res = await request(app.getHttpServer())
       .post(`/api/mobile/trips/${tripId}/locations`)
       .set('Authorization', `Bearer ${tripToken}`)
@@ -236,9 +238,9 @@ describe('Flujo móvil (e2e)', () => {
         }),
       );
     const body = res.body as IngestResp;
-    expect(res.status).toBe(201);
-    expect(body.stored).toBe(0);
-    expect(body.skipped).toBe(1);
+    expect(res.status).toBe(200);
+    expect(body.accepted).toBe(0);
+    expect(body.duplicateBatch).toBe(false); // inválido ≠ duplicado
   });
 
   it('tripToken de un viaje no corresponde a otro :id → 403', async () => {
