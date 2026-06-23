@@ -27,6 +27,12 @@ export class WebTripsController {
     return this.trips.findAll();
   }
 
+  /** Detalle de un viaje (W3): campos + cierre + foto + ruta. 404 si no existe. */
+  @Get(':id')
+  detail(@Param('id') id: string) {
+    return this.trips.findOne(id);
+  }
+
   /** Cierre forzado por admin (CU-06). Carrera → 409 TRIP_ALREADY_CONCLUDED. */
   @Post(':id/close')
   @HttpCode(200)

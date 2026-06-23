@@ -31,6 +31,38 @@ export interface Trip {
   lastLocation: { lat: number; lng: number; recordedAt: string } | null;
 }
 
+export type ClosureType = 'AUTO_GEOFENCE' | 'MANUAL_OPERATOR' | 'MANUAL_ADMIN';
+
+export interface RoutePoint {
+  lat: number;
+  lng: number;
+  recordedAt: string;
+}
+
+/** Detalle del viaje (W3): TripSummary + ruta completa. */
+export interface TripDetail {
+  id: string;
+  providerNumber: string;
+  providerName: string;
+  folio: string;
+  frontPlate: string;
+  rearPlate: string | null;
+  status: TripStatus;
+  startedAt: string;
+  endedAt: string | null;
+  durationMinutes: number | null;
+  closureType: ClosureType | null;
+  observations: string | null;
+  photoPath: string;
+  destination: {
+    name: string;
+    centerLat: number;
+    centerLng: number;
+    radiusMeters: number;
+  } | null;
+  route: RoutePoint[];
+}
+
 // --- Sesión (JWT del staff, Fase 6.1) -------------------------------------
 const TOKEN_KEY = 'exiros_token';
 const USER_KEY = 'exiros_user';
@@ -94,6 +126,13 @@ export async function fetchTrips(): Promise<Trip[]> {
   const res = await fetch(`${API_BASE}/api/web/trips`, { headers: authHeaders() });
   await ensureOk(res, `GET /api/web/trips → ${res.status}`);
   return res.json() as Promise<Trip[]>;
+}
+
+/** Detalle de un viaje (W3). 404 → ApiError(404). */
+export async function fetchTripDetail(id: string): Promise<TripDetail> {
+  const res = await fetch(`${API_BASE}/api/web/trips/${id}`, { headers: authHeaders() });
+  await ensureOk(res, `GET /api/web/trips/${id} → ${res.status}`);
+  return res.json() as Promise<TripDetail>;
 }
 
 /** URL absoluta de la foto servida por el backend en /uploads. */

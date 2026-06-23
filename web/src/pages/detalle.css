@@ -1,0 +1,115 @@
+.detalle-crumbs {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: #64748b;
+  margin-bottom: 0.75rem;
+}
+.detalle-crumbs a {
+  color: #1d6fe0;
+  text-decoration: none;
+}
+
+.btn-danger {
+  background: #dc2626;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 0.55rem 1.1rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.btn-danger:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.detalle-grid {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+.detalle-col {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.1rem 1.25rem;
+}
+.card-title {
+  margin: 0 0 0.9rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+.card-empty {
+  color: #94a3b8;
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.field {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+.field:last-child {
+  border-bottom: none;
+}
+.field-label {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+.field-value {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #0f172a;
+  text-align: right;
+}
+
+.detalle-photo {
+  width: 100%;
+  border-radius: 8px;
+  display: block;
+}
+
+.detalle-mapcard {
+  display: flex;
+  flex-direction: column;
+}
+.detalle-map {
+  height: 480px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.detalle-back {
+  margin-top: 1.25rem;
+  background: transparent;
+  border: none;
+  color: #1d6fe0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  display: inline-block;
+  text-decoration: none;
+}
+
+@media (max-width: 900px) {
+  .detalle-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -468,6 +468,38 @@ describe('Flujo móvil (e2e)', () => {
     expect(body.role).toBe('ADMIN');
   });
 
+  // --- Detalle de viaje (10.4) ---
+  it('GET /api/web/trips/:id sin token → 401', async () => {
+    const res = await request(app.getHttpServer()).get(
+      `/api/web/trips/${tripId}`,
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it('GET /api/web/trips/:id con token → 200 con ruta + durationMinutes', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`/api/web/trips/${tripId}`)
+      .set('Authorization', `Bearer ${adminToken}`);
+    const body = res.body as {
+      id: string;
+      route: unknown[];
+      durationMinutes: number | null;
+      destination: { name: string } | null;
+    };
+    expect(res.status).toBe(200);
+    expect(body.id).toBe(tripId);
+    expect(Array.isArray(body.route)).toBe(true);
+    expect(body.route.length).toBeGreaterThan(0); // este viaje recibió puntos
+    expect(body.destination?.name).toBe('E2E Destino');
+  });
+
+  it('GET /api/web/trips/:id inexistente → 404', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`/api/web/trips/${randomUUID()}`)
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(res.status).toBe(404);
+  });
+
   // --- Reporte Excel (7.1) ---
   // Acumula el cuerpo binario de la respuesta (supertest no parsea xlsx).
   const binaryParser = (
