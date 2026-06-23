@@ -1,0 +1,137 @@
+.btn-primary {
+  background: #1d4ed8;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 0.6rem 1.1rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-primary:hover {
+  background: #1e40af;
+}
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.btn-ghost {
+  background: #fff;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 0.6rem 1.1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8rem;
+  color: #475569;
+}
+.dest-maps {
+  color: #1d6fe0;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.82rem;
+}
+.row-inactive td {
+  opacity: 0.55;
+}
+.badge--baja {
+  background: #f1f5f9;
+  color: #94a3b8;
+}
+.dest-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+.dest-actions button {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+/* --- Modal --- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+.modal-panel {
+  background: #fff;
+  border-radius: 14px;
+  padding: 1.5rem;
+  width: 420px;
+  max-width: 92vw;
+  max-height: 92vh;
+  overflow-y: auto;
+}
+.modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+.modal-head h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #0f172a;
+}
+.modal-x {
+  background: transparent;
+  border: none;
+  font-size: 1rem;
+  cursor: pointer;
+  color: #94a3b8;
+}
+.modal-label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #334155;
+  margin: 0.8rem 0 0.35rem;
+}
+.modal-input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 0.55rem 0.7rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+}
+.modal-input--mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: #f8fafc;
+}
+.modal-hint {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin: 0.3rem 0 0;
+}
+.modal-map {
+  height: 220px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+}
+.modal-error {
+  color: #b91c1c;
+  font-size: 0.82rem;
+  margin: 0.7rem 0 0;
+}
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.7rem;
+  margin-top: 1.25rem;
+}

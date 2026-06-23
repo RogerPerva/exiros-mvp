@@ -63,6 +63,18 @@ export interface TripDetail {
   route: RoutePoint[];
 }
 
+/** Destino/geocerca (W4). */
+export interface Destination {
+  id: string;
+  name: string;
+  centerLat: number;
+  centerLng: number;
+  radiusMeters: number;
+  isActive: boolean;
+}
+
+export type DestinationInput = Omit<Destination, 'id' | 'isActive'>;
+
 // --- Sesión (JWT del staff, Fase 6.1) -------------------------------------
 const TOKEN_KEY = 'exiros_token';
 const USER_KEY = 'exiros_user';
@@ -148,6 +160,46 @@ export async function closeTripAdmin(id: string, observations: string): Promise<
     body: JSON.stringify({ observations }),
   });
   await ensureOk(res, `cierre → ${res.status}`);
+}
+
+// --- Destinos (W4 / Fase 5.1) ---------------------------------------------
+export async function fetchDestinations(): Promise<Destination[]> {
+  const res = await fetch(`${API_BASE}/api/web/destinations`, { headers: authHeaders() });
+  await ensureOk(res, `GET /api/web/destinations → ${res.status}`);
+  return res.json() as Promise<Destination[]>;
+}
+
+export async function createDestination(input: DestinationInput): Promise<Destination> {
+  const res = await fetch(`${API_BASE}/api/web/destinations`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(input),
+  });
+  await ensureOk(res, 'No se pudo crear el destino');
+  return res.json() as Promise<Destination>;
+}
+
+export async function updateDestination(
+  id: string,
+  input: DestinationInput,
+): Promise<Destination> {
+  const res = await fetch(`${API_BASE}/api/web/destinations/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(input),
+  });
+  await ensureOk(res, 'No se pudo actualizar el destino');
+  return res.json() as Promise<Destination>;
+}
+
+/** Baja lógica / restauración (active=false/true). */
+export async function setDestinationActive(id: string, active: boolean): Promise<void> {
+  const action = active ? 'restore' : 'deactivate';
+  const res = await fetch(`${API_BASE}/api/web/destinations/${id}/${action}`, {
+    method: 'PATCH',
+    headers: authHeaders(),
+  });
+  await ensureOk(res, 'No se pudo cambiar el estado del destino');
 }
 
 /** Filtros del reporte (W2 / 7.2). Vacíos = todos los viajes. */

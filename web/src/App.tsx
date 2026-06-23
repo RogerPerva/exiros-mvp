@@ -5,6 +5,7 @@ import Login from './Login';
 import MapaPage from './pages/MapaPage';
 import ViajesPage from './pages/ViajesPage';
 import ViajeDetallePage from './pages/ViajeDetallePage';
+import DestinosPage from './pages/DestinosPage';
 import PlaceholderPage from './pages/PlaceholderPage';
 
 /** Sin sesión → Login; con sesión → shell con sus rutas (10.1). */
@@ -19,15 +20,7 @@ function Routed() {
           <Route path="/mapa" element={<MapaPage />} />
           <Route path="/viajes" element={<ViajesPage />} />
           <Route path="/viajes/:id" element={<ViajeDetallePage />} />
-          <Route
-            path="/destinos"
-            element={
-              <PlaceholderPage
-                title="Destinos"
-                sub="Geocercas para el cierre automático de viajes."
-              />
-            }
-          />
+          <Route path="/destinos" element={<DestinosPage />} />
           <Route
             path="/usuarios"
             element={

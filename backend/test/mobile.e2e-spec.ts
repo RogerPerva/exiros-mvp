@@ -46,10 +46,13 @@ describe('Flujo móvil (e2e)', () => {
   let tripId: string;
   let tripToken: string;
   let adminToken: string;
+  let monitorToken: string;
 
   // Usuario admin propio del e2e (login real → JWT para las rutas /api/web/*).
   const adminEmail = `e2e-admin-${Date.now()}@exiros.com`;
   const adminPassword = 'e2e-pass-1234';
+  const monitorEmail = `e2e-monitor-${Date.now()}@exiros.com`;
+  const monitorPassword = 'e2e-pass-5678';
 
   const deviceId = `e2e-${Date.now()}`;
   const crid = `crid-${Date.now()}`;
@@ -125,6 +128,20 @@ describe('Flujo móvil (e2e)', () => {
       .post('/api/web/auth/login')
       .send({ email: adminEmail, password: adminPassword });
     adminToken = (login.body as { accessToken: string }).accessToken;
+
+    // Monitorista (rol no-admin) para probar el AdminRolesGuard (403 en Destinos).
+    await prisma.user.create({
+      data: {
+        email: monitorEmail,
+        name: 'E2E Monitor',
+        passwordHash: await bcrypt.hash(monitorPassword, 10),
+        role: Role.MONITOR,
+      },
+    });
+    const mlogin = await request(app.getHttpServer())
+      .post('/api/web/auth/login')
+      .send({ email: monitorEmail, password: monitorPassword });
+    monitorToken = (mlogin.body as { accessToken: string }).accessToken;
   });
 
   afterAll(async () => {
@@ -133,8 +150,11 @@ describe('Flujo móvil (e2e)', () => {
     await prisma.destination
       .delete({ where: { id: destId } })
       .catch(() => undefined);
+    await prisma.destination
+      .deleteMany({ where: { name: { startsWith: 'E2E-CRUD' } } })
+      .catch(() => undefined);
     await prisma.user
-      .delete({ where: { email: adminEmail } })
+      .deleteMany({ where: { email: { in: [adminEmail, monitorEmail] } } })
       .catch(() => undefined);
     await prisma.$disconnect();
     await app.close();
@@ -466,6 +486,83 @@ describe('Flujo móvil (e2e)', () => {
     expect(res.status).toBe(200);
     expect(body.email).toBe(adminEmail);
     expect(body.role).toBe('ADMIN');
+  });
+
+  // --- Destinos CRUD (10.5 / Fase 5.1) ---
+  let crudDestId = '';
+
+  it('GET /web/destinations sin token → 401', async () => {
+    const res = await request(app.getHttpServer()).get('/api/web/destinations');
+    expect(res.status).toBe(401);
+  });
+
+  it('GET /web/destinations con MONITOR → 403 (AdminRolesGuard)', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/api/web/destinations')
+      .set('Authorization', `Bearer ${monitorToken}`);
+    expect(res.status).toBe(403);
+  });
+
+  it('POST /web/destinations con radio fuera de rango (50) → 400', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/web/destinations')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        name: 'E2E-CRUD malo',
+        centerLat: 25.6,
+        centerLng: -100.3,
+        radiusMeters: 50,
+      });
+    expect(res.status).toBe(400);
+  });
+
+  it('POST /web/destinations con admin → 201 (radio 100-700)', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/web/destinations')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        name: 'E2E-CRUD destino',
+        centerLat: 25.6,
+        centerLng: -100.3,
+        radiusMeters: 250,
+      });
+    const body = res.body as {
+      id: string;
+      isActive: boolean;
+      radiusMeters: number;
+    };
+    expect(res.status).toBe(201);
+    expect(body.isActive).toBe(true);
+    expect(body.radiusMeters).toBe(250);
+    crudDestId = body.id;
+  });
+
+  it('PATCH /web/destinations/:id → 200 actualiza nombre/radio', async () => {
+    const res = await request(app.getHttpServer())
+      .patch(`/api/web/destinations/${crudDestId}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        name: 'E2E-CRUD editado',
+        centerLat: 25.6,
+        centerLng: -100.3,
+        radiusMeters: 400,
+      });
+    expect(res.status).toBe(200);
+    expect((res.body as { radiusMeters: number }).radiusMeters).toBe(400);
+  });
+
+  it('PATCH /web/destinations/:id/deactivate luego /restore → isActive false/true', async () => {
+    const off = await request(app.getHttpServer())
+      .patch(`/api/web/destinations/${crudDestId}/deactivate`)
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(off.status).toBe(200);
+    expect((off.body as { isActive: boolean }).isActive).toBe(false);
+
+    const on = await request(app.getHttpServer())
+      .patch(`/api/web/destinations/${crudDestId}/restore`)
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(on.status).toBe(200);
+    expect((on.body as { isActive: boolean }).isActive).toBe(true);
   });
 
   // --- Detalle de viaje (10.4) ---
