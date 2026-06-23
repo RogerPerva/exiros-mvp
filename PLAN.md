@@ -94,7 +94,7 @@ Formato: **Qué falta → por qué importa → qué bloquea → riesgo si se ign
 | :-- | :-- | :-- | :-- | :-- |
 | App abre directo en formulario (sin login) | Operador | Requisito explícito de adopción | — | No existe ninguna pantalla de login |
 | Formulario de inicio de viaje con sus 7 campos y validaciones | Operador | Origen de todo el dato | Backend `POST /trips` | Campos y reglas del doc §3.2 funcionan; viaje queda "En ruta" |
-| Foto de carga (cámara o galería) | Operador | Evidencia obligatoria | Storage | La foto se sube y se ve en el portal |
+| Foto de carga (cámara o galería) | Operador | Evidencia obligatoria | Storage | La foto se sube y se ve en el portal |/
 | Rastreo en segundo plano con batching + distance filter + hibernación | Operador | Núcleo del producto y de la propuesta de batería | Stack Android (D1) | <10% batería/jornada (medido); envíos cada ~15–20 min |
 | Ingesta de lotes comprimidos | Sistema | Eficiencia de datos/batería | DB | `POST /trips/:id/locations` acepta lote GZIP y persiste |
 | Mapa de tránsito activo (refresco 15–20 min) | Monitorista | Visibilidad | Ingesta + web | Camión en ruta aparece y se mueve en el mapa |
@@ -105,7 +105,7 @@ Formato: **Qué falta → por qué importa → qué bloquea → riesgo si se ign
 | Login + gestión de usuarios (web) | Admin/Monitorista | Seguridad de la consola | Auth | Alta/baja de monitoristas; rutas protegidas |
 | Reporte de viajes + exportación .xlsx (13 columnas) | Auditor | Auditoría de fletes | DB | Excel con exactamente las 13 columnas del doc §6 |
 
-### 5.2 Post-MVP (después del 26)
+### 5.2 Post-MVP (después del 26) 
 
 | Funcionalidad | Por qué se posterga | Riesgo de hacerlo ahora |
 | :-- | :-- | :-- |

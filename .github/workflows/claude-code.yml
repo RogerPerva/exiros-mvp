@@ -1,0 +1,38 @@
+name: Claude Code
+
+# El bot solo actúa cuando alguien escribe "@claude" en:
+#   - una Issue nueva
+#   - un comentario de una Issue
+#   - un comentario (normal o de revisión de código) en un Pull Request
+# Si "@claude" no aparece, el job sale enseguida sin gastar tokens.
+on:
+  issues:
+    types: [opened]
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+
+permissions:
+  contents: write        # crear ramas y commits para abrir el PR de propuestas
+  pull-requests: write   # abrir/actualizar PRs y comentar en ellos
+  issues: write          # responder dentro de las Issues
+
+jobs:
+  claude:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # historial completo: necesario para crear ramas/PR
+
+      - name: Claude
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          trigger_phrase: "@claude"
+          claude_args: |
+            --model claude-sonnet-4-6
+            --max-turns 15
+            --append-system-prompt "Eres el revisor de contexto y limpieza de este repositorio. ANTES de hacer nada, abre y lee el archivo .github/claude-review-system-prompt.md y sigue esas reglas al pie de la letra. Si propones cambios, hazlo abriendo un nuevo Pull Request. Responde en español y de forma concisa."
