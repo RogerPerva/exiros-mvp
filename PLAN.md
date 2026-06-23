@@ -595,7 +595,7 @@ Cierra los huecos que dependen de nosotros (distintos de H1–H11, que dependen 
   - **Decisión confirmada:** radio mínimo **100 m**, máximo **700 m**, default recomendado 100 m. Reflejar en DTO, constraint, OpenAPI y UI.
 
 #### Fase 6 — Auth web + usuarios (Slice 7)
-- **6.1 `[BE]`** Módulo auth JWT + Guard JWT + `POST /auth/login`.
+- [x] **6.1 `[BE]`** Módulo auth JWT + Guard JWT + `POST /auth/login`. **(pendiente confirmar humano)** *(2026-06-22: hecho. `AuthModule` con `@nestjs/jwt`+`bcryptjs`; `POST /api/web/auth/login` (público, 401 genérico, compare con hash dummy para no filtrar existencia por timing) + `GET /api/web/auth/me`; `JwtAuthGuard` custom (verifica Bearer JWT, adjunta `req.user`) + `@CurrentUser()`, aplicado explícito en `WebTripsController` (no global → móvil y login intactos); cierre admin ya llena `closedById` real (cierra el TODO). Seed idempotente `prisma/seed.ts` (admin@exiros.com / admin1234, env `SEED_ADMIN_*`) vía `npx prisma db seed`. Env nuevos: `JWT_SECRET`, `JWT_EXPIRES_IN`. **Gotcha:** añadir `prisma/seed.ts` movió el build a `dist/src/main.js` → excluido `prisma` en `tsconfig.build.json` para conservar `node dist/main.js`. Verificado: e2e 28/28 (7 nuevos de auth) + unit 21/21 + smoke curl real (login→token, 401 sin/ con token basura, 200 con token, /me, móvil 401 intacto). FUERA, anotado: CRUD usuarios/RolesGuard ADMIN = 6.2; W0 login web + W5 = 6.3.)*
 - **6.2 `[BE]`** CRUD usuarios + Guard de rol ADMIN.
 - **6.3 `[WEB]`** W0 login + rutas protegidas + W5 gestión usuarios. **Hecho cuando:** sin token no se entra; admin da de alta un monitorista que luego entra.
 

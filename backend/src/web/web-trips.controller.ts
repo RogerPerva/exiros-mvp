@@ -1,11 +1,21 @@
-import { Body, Controller, Get, HttpCode, Param, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Param,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
+import { CurrentUser, JwtAuthGuard } from '../common/jwt-auth.guard';
+import type { AuthUser } from '../auth/jwt-payload';
 import { TripCloseService } from '../trips/trip-close.service';
 import { WebTripsService } from './web-trips.service';
 import { WebCloseTripDto } from './dto/web-close.dto';
 
-// TODO Fase 6.1: proteger el espacio /api/web/* con Guard JWT (auth aún no montado).
-// Mientras no haya auth, `closedById` queda null (se llenará con el usuario al montar JWT).
+/** Espacio /api/web/* (portal de monitoristas), protegido con JWT (Fase 6.1). */
 @Controller('web/trips')
+@UseGuards(JwtAuthGuard)
 export class WebTripsController {
   constructor(
     private readonly trips: WebTripsService,
@@ -20,13 +30,17 @@ export class WebTripsController {
   /** Cierre forzado por admin (CU-06). Carrera → 409 TRIP_ALREADY_CONCLUDED. */
   @Post(':id/close')
   @HttpCode(200)
-  close(@Param('id') id: string, @Body() dto: WebCloseTripDto) {
+  close(
+    @Param('id') id: string,
+    @Body() dto: WebCloseTripDto,
+    @CurrentUser() user: AuthUser,
+  ) {
     return this.closeService.close({
       tripId: id,
       closureType: 'MANUAL_ADMIN',
       observations: dto.observations,
       endedAt: new Date(),
-      closedById: null,
+      closedById: user.sub,
     });
   }
 }

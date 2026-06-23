@@ -2,8 +2,9 @@ import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Role } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
+import * as bcrypt from 'bcryptjs';
 import { AppModule } from '../src/app.module';
 import { setupApp } from '../src/main';
 
@@ -42,6 +43,11 @@ describe('Flujo móvil (e2e)', () => {
   let destId: string;
   let tripId: string;
   let tripToken: string;
+  let adminToken: string;
+
+  // Usuario admin propio del e2e (login real → JWT para las rutas /api/web/*).
+  const adminEmail = `e2e-admin-${Date.now()}@exiros.com`;
+  const adminPassword = 'e2e-pass-1234';
 
   const deviceId = `e2e-${Date.now()}`;
   const crid = `crid-${Date.now()}`;
@@ -103,6 +109,20 @@ describe('Flujo móvil (e2e)', () => {
       },
     });
     destId = dest.id;
+
+    // Admin para autenticar /api/web/*: se crea con hash y se hace login real por HTTP.
+    await prisma.user.create({
+      data: {
+        email: adminEmail,
+        name: 'E2E Admin',
+        passwordHash: await bcrypt.hash(adminPassword, 10),
+        role: Role.ADMIN,
+      },
+    });
+    const login = await request(app.getHttpServer())
+      .post('/api/web/auth/login')
+      .send({ email: adminEmail, password: adminPassword });
+    adminToken = (login.body as { accessToken: string }).accessToken;
   });
 
   afterAll(async () => {
@@ -110,6 +130,9 @@ describe('Flujo móvil (e2e)', () => {
     await prisma.trip.deleteMany({ where: { destinationId: destId } });
     await prisma.destination
       .delete({ where: { id: destId } })
+      .catch(() => undefined);
+    await prisma.user
+      .delete({ where: { email: adminEmail } })
       .catch(() => undefined);
     await prisma.$disconnect();
     await app.close();
@@ -193,7 +216,9 @@ describe('Flujo móvil (e2e)', () => {
   });
 
   it('GET /api/web/trips → 200, el viaje aparece con destino y sin ubicación aún', async () => {
-    const res = await request(app.getHttpServer()).get('/api/web/trips');
+    const res = await request(app.getHttpServer())
+      .get('/api/web/trips')
+      .set('Authorization', `Bearer ${adminToken}`);
     const body = res.body as WebTrip[];
     expect(res.status).toBe(200);
     const trip = body.find((t) => t.id === tripId);
@@ -265,7 +290,9 @@ describe('Flujo móvil (e2e)', () => {
   });
 
   it('GET /api/web/trips → el viaje ya trae lastLocation tras la ingesta', async () => {
-    const res = await request(app.getHttpServer()).get('/api/web/trips');
+    const res = await request(app.getHttpServer())
+      .get('/api/web/trips')
+      .set('Authorization', `Bearer ${adminToken}`);
     const body = res.body as WebTrip[];
     const trip = body.find((t) => t.id === tripId);
     expect(trip?.lastLocation).not.toBeNull();
@@ -354,17 +381,22 @@ describe('Flujo móvil (e2e)', () => {
     const t = await makeTrip('adminclose');
     const res = await request(app.getHttpServer())
       .post(`/api/web/trips/${t.id}/close`)
+      .set('Authorization', `Bearer ${adminToken}`)
       .send({ observations: 'Cierre administrativo' });
     expect(res.status).toBe(200);
     expect((res.body as { closureType: string }).closureType).toBe(
       'MANUAL_ADMIN',
     );
+    // 6.1: el cierre admin ya registra al usuario autenticado (closedById deja de ser null).
+    const closed = await prisma.trip.findUnique({ where: { id: t.id } });
+    expect(closed?.closedById).not.toBeNull();
   });
 
   it('carrera: segundo cierre distinto → 409 TRIP_ALREADY_CONCLUDED', async () => {
     const t = await makeTrip('race');
     const first = await request(app.getHttpServer())
       .post(`/api/web/trips/${t.id}/close`)
+      .set('Authorization', `Bearer ${adminToken}`)
       .send({ observations: 'gana admin' });
     expect(first.status).toBe(200);
 
@@ -380,5 +412,57 @@ describe('Flujo móvil (e2e)', () => {
     expect((second.body as { message: string }).message).toBe(
       'TRIP_ALREADY_CONCLUDED',
     );
+  });
+
+  // --- Auth web (6.1) ---
+  it('POST /web/auth/login con credenciales válidas → 200 accessToken + user sin passwordHash', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/web/auth/login')
+      .send({ email: adminEmail, password: adminPassword });
+    const body = res.body as {
+      accessToken: string;
+      user: Record<string, unknown>;
+    };
+    expect(res.status).toBe(200);
+    expect(typeof body.accessToken).toBe('string');
+    expect(body.user.email).toBe(adminEmail);
+    expect(body.user.role).toBe('ADMIN');
+    expect(body.user).not.toHaveProperty('passwordHash');
+  });
+
+  it('POST /web/auth/login con password incorrecta → 401 genérico', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/web/auth/login')
+      .send({ email: adminEmail, password: 'mala' });
+    expect(res.status).toBe(401);
+  });
+
+  it('POST /web/auth/login con email inexistente → 401 (no filtra existencia)', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/web/auth/login')
+      .send({ email: 'nadie@exiros.com', password: 'x' });
+    expect(res.status).toBe(401);
+  });
+
+  it('GET /api/web/trips sin token → 401', async () => {
+    const res = await request(app.getHttpServer()).get('/api/web/trips');
+    expect(res.status).toBe(401);
+  });
+
+  it('GET /api/web/trips con token inválido → 401', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/api/web/trips')
+      .set('Authorization', 'Bearer no-es-un-jwt');
+    expect(res.status).toBe(401);
+  });
+
+  it('GET /web/auth/me con token → 200 perfil del admin', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/api/web/auth/me')
+      .set('Authorization', `Bearer ${adminToken}`);
+    const body = res.body as { email: string; role: string };
+    expect(res.status).toBe(200);
+    expect(body.email).toBe(adminEmail);
+    expect(body.role).toBe('ADMIN');
   });
 });

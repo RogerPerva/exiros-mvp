@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
+import { AuthModule } from './auth/auth.module';
 import { MobileModule } from './mobile/mobile.module';
 import { WebModule } from './web/web.module';
 
@@ -27,6 +28,7 @@ import { WebModule } from './web/web.module';
       serveRoot: '/uploads',
     }),
     PrismaModule,
+    AuthModule,
     MobileModule,
     WebModule,
   ],
