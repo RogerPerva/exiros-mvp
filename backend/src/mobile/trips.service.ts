@@ -21,7 +21,7 @@ export class TripsService {
 
   /** tripToken derivado por HMAC (determinista) → reconstruible sin guardarlo en claro. */
   private deriveToken(deviceId: string, clientRequestId: string): string {
-    const secret = this.config.get<string>('TRIP_TOKEN_SECRET') ?? '';
+    const secret = this.config.getOrThrow<string>('TRIP_TOKEN_SECRET');
     const sig = createHmac('sha256', secret)
       .update(`${deviceId}:${clientRequestId}`)
       .digest('hex');

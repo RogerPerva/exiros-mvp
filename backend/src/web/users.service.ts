@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -27,7 +28,8 @@ interface UpdateUserInput {
   role: Role;
 }
 
-/** Gestión de usuarios del staff (W5 / Fase 6.2). El Super admin está protegido. */
+/** Gestión de usuarios del staff (W5 / Fase 6.2). Protege contra dejar la plataforma
+ *  sin administradores activos (auto-baja, auto-degradación, degradar al último ADMIN). */
 @Injectable()
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
@@ -63,8 +65,22 @@ export class UsersService {
     }
   }
 
-  async update(id: string, input: UpdateUserInput) {
-    await this.ensureExists(id);
+  async update(id: string, input: UpdateUserInput, currentUserId: string) {
+    const target = await this.getOrThrow(id);
+    // No puedes quitarte a ti mismo el rol de administrador.
+    if (id === currentUserId && input.role !== Role.ADMIN) {
+      throw new BadRequestException(
+        'No puedes quitarte a ti mismo el rol de administrador',
+      );
+    }
+    // No degradar al último administrador activo.
+    if (
+      target.role === Role.ADMIN &&
+      target.isActive &&
+      input.role !== Role.ADMIN
+    ) {
+      await this.assertNotLastAdmin(id);
+    }
     return this.prisma.user.update({
       where: { id },
       data: { name: input.name, role: input.role },
@@ -73,8 +89,16 @@ export class UsersService {
   }
 
   /** Baja lógica (soft delete). */
-  async setActive(id: string, isActive: boolean) {
-    await this.ensureExists(id);
+  async setActive(id: string, isActive: boolean, currentUserId?: string) {
+    const target = await this.getOrThrow(id);
+    if (!isActive) {
+      if (id === currentUserId) {
+        throw new BadRequestException('No puedes darte de baja a ti mismo');
+      }
+      if (target.role === Role.ADMIN && target.isActive) {
+        await this.assertNotLastAdmin(id);
+      }
+    }
     return this.prisma.user.update({
       where: { id },
       data: { isActive },
@@ -82,11 +106,24 @@ export class UsersService {
     });
   }
 
-  private async ensureExists(id: string): Promise<void> {
+  private async getOrThrow(id: string) {
     const user = await this.prisma.user.findUnique({
       where: { id },
-      select: { id: true },
+      select: { id: true, role: true, isActive: true },
     });
     if (!user) throw new NotFoundException('El usuario no existe');
+    return user;
+  }
+
+  /** Lanza si `id` es el único administrador activo (evita dejar la plataforma sin admins). */
+  private async assertNotLastAdmin(id: string): Promise<void> {
+    const otherActiveAdmins = await this.prisma.user.count({
+      where: { role: Role.ADMIN, isActive: true, id: { not: id } },
+    });
+    if (otherActiveAdmins === 0) {
+      throw new ConflictException(
+        'No puedes dejar la plataforma sin administradores activos',
+      );
+    }
   }
 }

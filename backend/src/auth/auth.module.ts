@@ -15,7 +15,7 @@ import { AuthService } from './auth.service';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        secret: config.get<string>('JWT_SECRET'),
+        secret: config.getOrThrow<string>('JWT_SECRET'),
         signOptions: {
           // `ms`-style string ('12h', '7d'); cast al tipo del propio @nestjs/jwt.
           expiresIn: (config.get<string>('JWT_EXPIRES_IN') ??

@@ -17,9 +17,10 @@ describe('LocationsService.addBatch', () => {
       },
       trip: {
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
-        findUnique: jest
-          .fn()
-          .mockResolvedValue({ status: 'CONCLUIDO', closureType: 'AUTO_GEOFENCE' }),
+        findUnique: jest.fn().mockResolvedValue({
+          status: 'CONCLUIDO',
+          closureType: 'AUTO_GEOFENCE',
+        }),
       },
     };
     service = new LocationsService(prisma as never);
@@ -213,7 +214,11 @@ describe('LocationsService.addBatch', () => {
     expect(res).toEqual({
       accepted: 0,
       duplicateBatch: false,
-      trip: { status: 'CONCLUIDO', stopTracking: true, closureType: 'MANUAL_ADMIN' },
+      trip: {
+        status: 'CONCLUIDO',
+        stopTracking: true,
+        closureType: 'MANUAL_ADMIN',
+      },
     });
     expect(prisma.location.createMany).not.toHaveBeenCalled();
   });

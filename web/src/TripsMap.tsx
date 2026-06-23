@@ -65,7 +65,7 @@ export default function TripsMap({
                 <Circle
                   key={`geo-${trip.id}`}
                   center={[trip.destination.centerLat, trip.destination.centerLng]}
-                  radius={300}
+                  radius={trip.destination.radiusMeters}
                   pathOptions={{ color: '#0D479C', fillOpacity: 0.08 }}
                 />
               ) : null,

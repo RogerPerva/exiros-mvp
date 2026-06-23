@@ -65,7 +65,12 @@ export class WebTripsService {
         endedAt: true,
         photoPath: true,
         destination: {
-          select: { name: true, centerLat: true, centerLng: true },
+          select: {
+            name: true,
+            centerLat: true,
+            centerLng: true,
+            radiusMeters: true,
+          },
         },
         // Último punto de ruta (alimentado por los lotes de ingesta) para pintarlo en el mapa W1.
         locations: {

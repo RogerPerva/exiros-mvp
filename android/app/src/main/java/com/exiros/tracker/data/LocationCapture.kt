@@ -68,9 +68,10 @@ class LocationCapture(context: Context) {
 
     companion object {
         const val DEFAULT_ACCURACY = 9999.0
-        // Camión en marcha: fix frecuente, registra si se movió ≥25 m.
-        val MOVING = CaptureConfig(intervalMs = 5_000L, minDistanceMeters = 25f)
-        // Hibernación (detenido): fix espaciado para ahorrar batería.
-        val HIBERNATING = CaptureConfig(intervalMs = 60_000L, minDistanceMeters = 50f)
+        // Camión en marcha: captura pasiva cada ~2 min, registra si se movió ≥300 m
+        // (fuente §3.3.1/3.3.2: 2-3 min, distance filter 300-500 m → batería <10%/jornada).
+        val MOVING = CaptureConfig(intervalMs = 120_000L, minDistanceMeters = 300f)
+        // Hibernación (detenido): fix más espaciado para ahorrar batería.
+        val HIBERNATING = CaptureConfig(intervalMs = 300_000L, minDistanceMeters = 500f)
     }
 }

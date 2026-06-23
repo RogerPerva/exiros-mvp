@@ -26,7 +26,12 @@ export interface Trip {
   startedAt: string;
   endedAt: string | null;
   photoPath: string;
-  destination: { name: string; centerLat: number; centerLng: number } | null;
+  destination: {
+    name: string;
+    centerLat: number;
+    centerLng: number;
+    radiusMeters: number;
+  } | null;
   /** Último punto de ruta recibido (de los lotes de ingesta); null si aún no llega ninguno. */
   lastLocation: { lat: number; lng: number; recordedAt: string } | null;
 }

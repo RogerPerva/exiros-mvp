@@ -30,14 +30,19 @@ export class WebUsersController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
-    return this.users.update(id, dto);
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateUserDto,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.users.update(id, dto, user.sub);
   }
 
-  /** Dar de baja (soft delete). El Super admin no puede darse de baja. */
+  /** Dar de baja (soft delete). No puedes darte de baja a ti mismo ni dejar la
+   *  plataforma sin administradores activos. */
   @Patch(':id/deactivate')
-  deactivate(@Param('id') id: string) {
-    return this.users.setActive(id, false);
+  deactivate(@Param('id') id: string, @CurrentUser() user: AuthUser) {
+    return this.users.setActive(id, false, user.sub);
   }
 
   @Patch(':id/restore')

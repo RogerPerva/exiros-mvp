@@ -421,6 +421,17 @@ describe('Flujo móvil (e2e)', () => {
     expect(closed?.closedById).not.toBeNull();
   });
 
+  it('cierre forzado web por MONITOR → 403 (solo ADMIN)', async () => {
+    const t = await makeTrip('monitorclose');
+    const res = await request(app.getHttpServer())
+      .post(`/api/web/trips/${t.id}/close`)
+      .set('Authorization', `Bearer ${monitorToken}`)
+      .send({ observations: 'no debería poder' });
+    expect(res.status).toBe(403);
+    const stillOpen = await prisma.trip.findUnique({ where: { id: t.id } });
+    expect(stillOpen?.status).toBe('EN_RUTA');
+  });
+
   it('carrera: segundo cierre distinto → 409 TRIP_ALREADY_CONCLUDED', async () => {
     const t = await makeTrip('race');
     const first = await request(app.getHttpServer())

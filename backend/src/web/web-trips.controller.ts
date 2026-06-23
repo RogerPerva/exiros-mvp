@@ -8,6 +8,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { CurrentUser, JwtAuthGuard } from '../common/jwt-auth.guard';
+import { AdminRolesGuard } from '../common/roles.guard';
 import type { AuthUser } from '../auth/jwt-payload';
 import { TripCloseService } from '../trips/trip-close.service';
 import { WebTripsService } from './web-trips.service';
@@ -33,8 +34,9 @@ export class WebTripsController {
     return this.trips.findOne(id);
   }
 
-  /** Cierre forzado por admin (CU-06). Carrera → 409 TRIP_ALREADY_CONCLUDED. */
+  /** Cierre forzado por admin (CU-06). Solo ADMIN. Carrera → 409 TRIP_ALREADY_CONCLUDED. */
   @Post(':id/close')
+  @UseGuards(AdminRolesGuard)
   @HttpCode(200)
   close(
     @Param('id') id: string,

@@ -68,7 +68,10 @@ describe('TripsService', () => {
       trip: { findUnique: jest.fn(), create: jest.fn() },
       destination: { findFirst: jest.fn() },
     };
-    const config = { get: jest.fn().mockReturnValue('test-secret') };
+    const config = {
+      get: jest.fn().mockReturnValue('test-secret'),
+      getOrThrow: jest.fn().mockReturnValue('test-secret'),
+    };
     service = new TripsService(prisma as never, config as never);
   });
 

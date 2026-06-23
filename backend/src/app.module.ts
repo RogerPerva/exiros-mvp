@@ -11,9 +11,26 @@ import { AuthModule } from './auth/auth.module';
 import { MobileModule } from './mobile/mobile.module';
 import { WebModule } from './web/web.module';
 
+/** Falla rápido al arranque si faltan secretos críticos (en vez de degradar en silencio). */
+function validateEnv(config: Record<string, unknown>): Record<string, unknown> {
+  const required = [
+    'DATABASE_URL',
+    'JWT_SECRET',
+    'TRIP_TOKEN_SECRET',
+    'APP_KEY',
+  ];
+  const missing = required.filter((key) => !config[key]);
+  if (missing.length > 0) {
+    throw new Error(
+      `Faltan variables de entorno requeridas: ${missing.join(', ')}`,
+    );
+  }
+  return config;
+}
+
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
     // Rate-limit global (ADR-007): el endpoint público móvil es la mayor superficie
     // de ataque. 100 req/min por IP por defecto; configurable por env para afinar.
     ThrottlerModule.forRoot([
