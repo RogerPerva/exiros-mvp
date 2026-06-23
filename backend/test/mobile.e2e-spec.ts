@@ -5,6 +5,8 @@ import { App } from 'supertest/types';
 import { PrismaClient, Role } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import * as bcrypt from 'bcryptjs';
+import { Workbook } from 'exceljs';
+import { REPORT_HEADERS } from '../src/web/reports.service';
 import { AppModule } from '../src/app.module';
 import { setupApp } from '../src/main';
 
@@ -464,5 +466,70 @@ describe('Flujo móvil (e2e)', () => {
     expect(res.status).toBe(200);
     expect(body.email).toBe(adminEmail);
     expect(body.role).toBe('ADMIN');
+  });
+
+  // --- Reporte Excel (7.1) ---
+  // Acumula el cuerpo binario de la respuesta (supertest no parsea xlsx).
+  const binaryParser = (
+    res: import('http').IncomingMessage,
+    cb: (err: Error | null, body: Buffer) => void,
+  ): void => {
+    const chunks: Buffer[] = [];
+    res.on('data', (c: Buffer) => chunks.push(c));
+    res.on('end', () => cb(null, Buffer.concat(chunks)));
+  };
+
+  it('GET /web/reports/export sin token → 401', async () => {
+    const res = await request(app.getHttpServer()).get(
+      '/api/web/reports/export',
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it('GET /web/reports/export con token → 200 .xlsx con EXACTAMENTE las 13 columnas en orden', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/api/web/reports/export')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .buffer()
+      .parse(binaryParser);
+
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toContain('spreadsheetml.sheet');
+
+    const wb = new Workbook();
+    await wb.xlsx.load(res.body as Buffer);
+    const ws = wb.worksheets[0];
+    // row.values es 1-indexado (índice 0 = undefined) → slice(1).
+    const headers = (ws.getRow(1).values as unknown[]).slice(1);
+    expect(headers).toEqual([...REPORT_HEADERS]);
+    expect(headers).toHaveLength(13);
+  });
+
+  it('GET /web/reports/export?status=CONCLUIDO filtra (sólo concluidos)', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/api/web/reports/export?status=CONCLUIDO')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .buffer()
+      .parse(binaryParser);
+
+    expect(res.status).toBe(200);
+    const wb = new Workbook();
+    await wb.xlsx.load(res.body as Buffer);
+    const ws = wb.worksheets[0];
+    // Col 11 = Estatus del Viaje. Toda fila de datos debe decir "Concluido".
+    const statuses: string[] = [];
+    ws.eachRow((row, n) => {
+      if (n === 1) return; // encabezado
+      const cell = row.getCell(11).value; // col 11 = Estatus, siempre string
+      statuses.push(typeof cell === 'string' ? cell : '');
+    });
+    for (const s of statuses) expect(s).toBe('Concluido');
+  });
+
+  it('GET /web/reports/export?status=BASURA → 400 (validación de enum)', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/api/web/reports/export?status=BASURA')
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(res.status).toBe(400);
   });
 });

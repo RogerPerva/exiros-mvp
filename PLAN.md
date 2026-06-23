@@ -600,7 +600,7 @@ Cierra los huecos que dependen de nosotros (distintos de H1–H11, que dependen 
 - **6.3 `[WEB]`** W0 login + rutas protegidas + W5 gestión usuarios. **Hecho cuando:** sin token no se entra; admin da de alta un monitorista que luego entra.
 
 #### Fase 7 — Reportes Excel (Slice 6)
-- **7.1 `[BE]`** `GET /api/web/reports/export` .xlsx con las **13 columnas exactas** (exceljs).
+- [x] **7.1 `[BE]`** `GET /api/web/reports/export` .xlsx con las **13 columnas exactas** (exceljs). **(pendiente confirmar humano)** *(2026-06-22: hecho. `ReportsService` + `ReportsController` (`GET /api/web/reports/export`, protegido JWT) con filtros opcionales `from/to/status/destinationId` (DTO validado, enum basura→400). 13 encabezados exactos del doc §6 en `REPORT_HEADERS` (constante única, reutilizada por el e2e); enums→español (`En ruta/Concluido`; `Automático por geocerca/Manual por Operador/Manual por Administrador`); fechas `DD/MM/AAAA HH:MM` en TZ America/Mexico_City; Duración derivada `HH:MM` (RN-05, vacía si En ruta). Verificado: e2e 32/32 (+4: 401 sin token, headers=13 exactos, filtro status, enum→400) + smoke real: `file` reporta "Microsoft Excel 2007+", 13 columnas en orden, mappings correctos. FUERA, anotado: botón/filtros en la web = 7.2.)*
 - **7.2 `[WEB]`** W2 botón exportar + filtros. **Hecho cuando:** el .xlsx tiene exactamente 13 columnas en orden.
 
 #### Fase 8 — Endurecimiento + seguridad + pruebas
