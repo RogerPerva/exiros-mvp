@@ -1,78 +1,191 @@
-import {
-  Circle,
-  CircleMarker,
-  LayersControl,
-  LayerGroup,
-  MapContainer,
-  Popup,
-  TileLayer,
-} from 'react-leaflet';
+import { useEffect, useMemo, useState } from 'react';
+import { Circle, CircleMarker, LayerGroup, MapContainer, Popup, TileLayer, useMap } from 'react-leaflet';
+import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import 'leaflet.markercluster';
+import 'leaflet.markercluster/dist/MarkerCluster.css';
+import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import type { Trip } from './api';
+import { deriveState, STATE_COLOR, STATE_LABEL } from './tripState';
+
+type Base = 'mapa' | 'satelite';
 
 /**
- * Mapa de tránsito W1 (10.2). Pinta el último punto de cada viaje EN_RUTA + la geocerca de
- * su destino, con control de capas (Mapa / Satélite / Geocercas). Clusters = diferido
- * (ver PLAN: optimización para alto volumen). Usa CircleMarker para evitar el problema de
- * los iconos PNG de Leaflet con bundlers (Vite).
+ * Mapa de tránsito W1 (10.2). Pinta el último punto de cada viaje activo (En ruta / Detenido)
+ * coloreado por su estado derivado + la geocerca de su destino. Panel de capas
+ * (Mapa / Satélite / Geocercas / Clusters). Usa CircleMarker para evitar el problema de los
+ * iconos PNG de Leaflet con bundlers (Vite); los clusters usan leaflet.markercluster (vanilla,
+ * sin riesgo de compat con React 19).
  */
-export default function TripsMap({ trips }: { trips: Trip[] }) {
-  const active = trips.filter((t) => t.status === 'EN_RUTA');
-  const withLocation = active.filter((t) => t.lastLocation !== null);
-  const center: [number, number] = withLocation[0]?.lastLocation
-    ? [withLocation[0].lastLocation.lat, withLocation[0].lastLocation.lng]
+export default function TripsMap({
+  trips,
+  selectedId,
+  onSelect,
+}: {
+  trips: Trip[];
+  selectedId?: string | null;
+  onSelect?: (id: string) => void;
+}) {
+  const [base, setBase] = useState<Base>('mapa');
+  const [showGeofences, setShowGeofences] = useState(true);
+  const [showClusters, setShowClusters] = useState(false);
+
+  // Solo viajes activos con ubicación: lo que tiene sentido pintar en un mapa "en tiempo real".
+  const plotted = useMemo(
+    () =>
+      trips
+        .filter((t) => t.status === 'EN_RUTA' && t.lastLocation)
+        .map((t) => ({ trip: t, state: deriveState(t) })),
+    [trips],
+  );
+
+  const center: [number, number] = plotted[0]
+    ? [plotted[0].trip.lastLocation!.lat, plotted[0].trip.lastLocation!.lng]
     : [25.6866, -100.3161];
 
   return (
-    <MapContainer center={center} zoom={6} style={{ height: '100%', width: '100%' }}>
-      <LayersControl position="topright">
-        <LayersControl.BaseLayer checked name="Mapa">
+    <div className="map-canvas">
+      <MapContainer center={center} zoom={6} style={{ height: '100%', width: '100%' }}>
+        {base === 'mapa' ? (
           <TileLayer
             attribution="&copy; OpenStreetMap"
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
-        </LayersControl.BaseLayer>
-        <LayersControl.BaseLayer name="Satélite">
+        ) : (
           <TileLayer
             attribution="&copy; Esri"
             url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
           />
-        </LayersControl.BaseLayer>
+        )}
 
-        <LayersControl.Overlay checked name="Geocercas">
+        {showGeofences && (
           <LayerGroup>
-            {active.map((t) =>
-              t.destination ? (
+            {plotted.map(({ trip }) =>
+              trip.destination ? (
                 <Circle
-                  key={`geo-${t.id}`}
-                  center={[t.destination.centerLat, t.destination.centerLng]}
+                  key={`geo-${trip.id}`}
+                  center={[trip.destination.centerLat, trip.destination.centerLng]}
                   radius={300}
                   pathOptions={{ color: '#0D479C', fillOpacity: 0.08 }}
                 />
               ) : null,
             )}
           </LayerGroup>
-        </LayersControl.Overlay>
-      </LayersControl>
+        )}
 
-      {active.map((t) =>
-        t.lastLocation ? (
-          <CircleMarker
-            key={`loc-${t.id}`}
-            center={[t.lastLocation.lat, t.lastLocation.lng]}
-            radius={8}
-            pathOptions={{ color: '#16A34A', fillColor: '#16A34A', fillOpacity: 0.9 }}
-          >
-            <Popup>
-              <strong>{t.folio}</strong> · {t.frontPlate}
-              <br />
-              {t.providerName}
-              <br />
-              {t.destination?.name ?? '—'}
-            </Popup>
-          </CircleMarker>
-        ) : null,
-      )}
-    </MapContainer>
+        {showClusters ? (
+          <ClusterLayer plotted={plotted} onSelect={onSelect} />
+        ) : (
+          plotted.map(({ trip, state }) => (
+            <CircleMarker
+              key={`loc-${trip.id}`}
+              center={[trip.lastLocation!.lat, trip.lastLocation!.lng]}
+              radius={selectedId === trip.id ? 11 : 8}
+              pathOptions={{
+                color: selectedId === trip.id ? '#0D479C' : STATE_COLOR[state],
+                fillColor: STATE_COLOR[state],
+                fillOpacity: 0.9,
+                weight: selectedId === trip.id ? 4 : 2,
+              }}
+              eventHandlers={{ click: () => onSelect?.(trip.id) }}
+            >
+              <Popup>
+                <strong>{trip.folio}</strong> · {trip.frontPlate}
+                <br />
+                {trip.providerName}
+                <br />
+                {trip.destination?.name ?? '—'} · {STATE_LABEL[state]}
+              </Popup>
+            </CircleMarker>
+          ))
+        )}
+
+        <PanTo trip={plotted.find((p) => p.trip.id === selectedId)?.trip ?? null} />
+      </MapContainer>
+
+      <div className="map-controls">
+        <span className="map-controls-title">Capas</span>
+        <label>
+          <input type="radio" name="base" checked={base === 'mapa'} onChange={() => setBase('mapa')} />
+          Mapa
+        </label>
+        <label>
+          <input
+            type="radio"
+            name="base"
+            checked={base === 'satelite'}
+            onChange={() => setBase('satelite')}
+          />
+          Satélite
+        </label>
+        <hr className="map-controls-sep" />
+        <label>
+          <input
+            type="checkbox"
+            checked={showGeofences}
+            onChange={(e) => setShowGeofences(e.target.checked)}
+          />
+          Geocercas
+        </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={showClusters}
+            onChange={(e) => setShowClusters(e.target.checked)}
+          />
+          Clusters
+        </label>
+      </div>
+    </div>
   );
+}
+
+type Plotted = { trip: Trip; state: ReturnType<typeof deriveState> };
+
+/** Agrupa los markers con leaflet.markercluster (imperativo): burbujas con conteo a bajo zoom. */
+function ClusterLayer({
+  plotted,
+  onSelect,
+}: {
+  plotted: Plotted[];
+  onSelect?: (id: string) => void;
+}) {
+  const map = useMap();
+  useEffect(() => {
+    const group = L.markerClusterGroup({ showCoverageOnHover: false });
+    for (const { trip, state } of plotted) {
+      const marker = L.circleMarker([trip.lastLocation!.lat, trip.lastLocation!.lng], {
+        radius: 8,
+        color: STATE_COLOR[state],
+        fillColor: STATE_COLOR[state],
+        fillOpacity: 0.9,
+        weight: 2,
+      });
+      marker.bindPopup(
+        `<strong>${trip.folio}</strong> · ${trip.frontPlate}<br/>${trip.providerName}<br/>${
+          trip.destination?.name ?? '—'
+        } · ${STATE_LABEL[state]}`,
+      );
+      marker.on('click', () => onSelect?.(trip.id));
+      group.addLayer(marker);
+    }
+    map.addLayer(group);
+    return () => {
+      map.removeLayer(group);
+    };
+  }, [map, plotted, onSelect]);
+  return null;
+}
+
+/** Centra el mapa en el viaje seleccionado desde la tabla. */
+function PanTo({ trip }: { trip: Trip | null }) {
+  const map = useMap();
+  useEffect(() => {
+    if (trip?.lastLocation) {
+      map.setView([trip.lastLocation.lat, trip.lastLocation.lng], Math.max(map.getZoom(), 9), {
+        animate: true,
+      });
+    }
+  }, [map, trip]);
+  return null;
 }

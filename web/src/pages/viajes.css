@@ -98,9 +98,18 @@
   background: #dcfce7;
   color: #16a34a;
 }
+.badge--detenido {
+  background: #fef3c7;
+  color: #b45309;
+}
 .badge--concluido {
   background: #eef2f7;
   color: #475569;
+}
+
+.viajes-table tbody tr.is-selected {
+  background: #eaf2fd;
+  box-shadow: inset 3px 0 0 #1d6fe0;
 }
 
 .viajes-eye {
