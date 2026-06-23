@@ -72,6 +72,7 @@ import com.exiros.tracker.data.DeviceId
 import com.exiros.tracker.data.TripRepository
 import com.exiros.tracker.data.TripResult
 import com.exiros.tracker.service.TrackingService
+import com.exiros.tracker.sync.SyncScheduler
 import com.exiros.tracker.ui.BorderGray
 import com.exiros.tracker.ui.ExirosBlue
 import com.exiros.tracker.ui.ExirosError
@@ -139,15 +140,18 @@ private fun RootScreen(repo: TripRepository) {
     val tripFlow = remember(repo) { repo.activeTrip.map<ActiveTripEntity?, TripLoad> { TripLoad.Ready(it) } }
     val tripState by tripFlow.collectAsState(initial = TripLoad.Loading)
 
-    // Arranca/detiene el servicio de rastreo según haya viaje activo y permiso. Sobrevive en 2º
-    // plano por sí mismo; aquí solo lo encendemos/apagamos al entrar/salir de "En ruta".
+    val scope = rememberCoroutineScope()
+    var showFinalize by remember { mutableStateOf(false) } // M3 ↔ M4
+
+    // El servicio sólo rastrea mientras el viaje está EN_RUTA. Al concluir (geocerca o cierre),
+    // el estado pasa a CONCLUIDO → se detiene (deja de gastar GPS) y la app muestra M5.
     val ready = tripState as? TripLoad.Ready
-    val hasActiveTrip = ready?.trip != null
-    val readyNoTrip = ready != null && ready.trip == null
-    LaunchedEffect(hasActiveTrip, hasLocationPermission, readyNoTrip) {
+    val tracking = ready?.trip?.status == "EN_RUTA"
+    val shouldStop = ready != null && !tracking // sin viaje o ya concluido
+    LaunchedEffect(tracking, hasLocationPermission, shouldStop) {
         when {
-            hasActiveTrip && hasLocationPermission -> TrackingService.start(context)
-            readyNoTrip -> TrackingService.stop(context)
+            tracking && hasLocationPermission -> TrackingService.start(context)
+            shouldStop -> TrackingService.stop(context)
         }
     }
 
@@ -157,20 +161,33 @@ private fun RootScreen(repo: TripRepository) {
         }
         is TripLoad.Ready -> {
             val active = s.trip
-            if (active == null) {
-                // Al crear el viaje en M2, persistimos en Room → la app navega sola a M3.
-                TripFormScreen(
+            when {
+                active == null -> TripFormScreen(
                     onTripStarted = { trip, dest, providerName, folio ->
                         repo.startTrip(trip, dest, providerName, folio)
                         if (!hasLocationPermission) requestLocation()
                     },
                 )
-            } else {
-                EnRutaScreen(
+                active.status == "CONCLUIDO" -> ConcluidoScreen( // M5
+                    trip = active,
+                    onNewTrip = { scope.launch { repo.endTrip() } },
+                )
+                showFinalize -> FinalizarScreen( // M4
+                    onCancel = { showFinalize = false },
+                    onConfirm = { observations ->
+                        scope.launch {
+                            repo.requestClose(observations)
+                            SyncScheduler.syncNow(context) // sync prioritario para cerrar ya
+                        }
+                        showFinalize = false
+                    },
+                )
+                else -> EnRutaScreen( // M3
                     trip = active,
                     repo = repo,
                     hasLocationPermission = hasLocationPermission,
                     onRequestPermission = ::requestLocation,
+                    onFinalize = { showFinalize = true },
                 )
             }
         }

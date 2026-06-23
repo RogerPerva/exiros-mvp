@@ -30,7 +30,11 @@ data class ActiveTripEntity(
     val radiusMeters: Double,
     val providerName: String,
     val folio: String,
+    // Cierre del operador (4.2): se encola localmente y el SyncWorker lo manda con idempotencia.
     val pendingClose: Boolean = false,
+    val closeRequestId: String? = null,
+    val closeRequestedAt: Long? = null,
+    val closeObservations: String? = null,
     val createdAt: Long,
 ) {
     companion object {
@@ -69,6 +73,15 @@ interface TripDao {
     @Query("DELETE FROM active_trip")
     suspend fun clearActiveTrip()
 
+    @Query(
+        "UPDATE active_trip SET pendingClose = 1, closeRequestId = :rid, " +
+            "closeRequestedAt = :at, closeObservations = :obs WHERE id = 1",
+    )
+    suspend fun setPendingClose(rid: String, at: Long, obs: String)
+
+    @Query("UPDATE active_trip SET status = 'CONCLUIDO', pendingClose = 0 WHERE id = 1")
+    suspend fun markConcluded()
+
     @Insert
     suspend fun insertLocation(point: LocationEntity)
 
@@ -85,7 +98,7 @@ interface TripDao {
     suspend fun markSent(ids: List<Long>)
 }
 
-@Database(entities = [ActiveTripEntity::class, LocationEntity::class], version = 1, exportSchema = false)
+@Database(entities = [ActiveTripEntity::class, LocationEntity::class], version = 2, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun tripDao(): TripDao
 
@@ -97,7 +110,11 @@ abstract class AppDatabase : RoomDatabase() {
                 context.applicationContext,
                 AppDatabase::class.java,
                 "exiros-tracker.db",
-            ).build().also { instance = it }
+            )
+                // MVP: el esquema local es caché; recrearlo en upgrade es aceptable (el viaje
+                // también vive en el backend). Si en producción importara, añadir Migration 1→2.
+                .fallbackToDestructiveMigration()
+                .build().also { instance = it }
         }
     }
 }

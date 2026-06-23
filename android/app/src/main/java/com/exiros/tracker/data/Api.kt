@@ -145,6 +145,36 @@ class ApiClient {
         }
     }
 
+    /**
+     * Cierre del operador (4.2). Idempotente por `closeRequestId`. Devuelve true si el viaje
+     * quedó cerrado: 200 (lo cerró este request) o 409 TRIP_ALREADY_CONCLUDED (otro actor lo
+     * cerró antes — para la app también significa "ya está cerrado, deja de rastrear").
+     */
+    suspend fun closeTrip(
+        tripId: String,
+        tripToken: String,
+        closeRequestId: String,
+        requestedAt: String,
+        observations: String,
+    ): Boolean = withContext(Dispatchers.IO) {
+        val payload = JSONObject()
+            .put("observations", observations)
+            .put("requestedAt", requestedAt)
+            .put("closeRequestId", closeRequestId)
+            .toString()
+        val req = Request.Builder()
+            .url("$base/api/mobile/trips/$tripId/close")
+            .header("Authorization", "Bearer $tripToken")
+            .post(payload.toRequestBody(JSON))
+            .build()
+        client.newCall(req).execute().use { res ->
+            val body = res.body?.string().orEmpty()
+            if (res.isSuccessful) return@withContext true
+            if (res.code == 409 && body.contains("TRIP_ALREADY_CONCLUDED")) return@withContext true
+            error("close HTTP ${res.code}: $body")
+        }
+    }
+
     private fun gzip(bytes: ByteArray): ByteArray {
         val out = java.io.ByteArrayOutputStream()
         java.util.zip.GZIPOutputStream(out).use { it.write(bytes) }

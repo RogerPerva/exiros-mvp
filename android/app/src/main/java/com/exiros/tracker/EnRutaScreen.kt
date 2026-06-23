@@ -64,6 +64,7 @@ fun EnRutaScreen(
     repo: TripRepository,
     hasLocationPermission: Boolean,
     onRequestPermission: () -> Unit,
+    onFinalize: () -> Unit,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -155,6 +156,18 @@ fun EnRutaScreen(
                 color = TextSecondary,
                 fontSize = 12.sp,
             )
+        }
+
+        // Finalizar viaje (M4). Si ya se pidió el cierre, se está enviando al backend.
+        if (trip.pendingClose) {
+            Text("Finalizando viaje…", color = ExirosBlue, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+        } else {
+            Button(
+                onClick = onFinalize,
+                shape = cardShape,
+                colors = ButtonDefaults.buttonColors(containerColor = ExirosNavy),
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+            ) { Text("Finalizar viaje", fontWeight = FontWeight.SemiBold) }
         }
 
         // Afordancias de DEBUG: forzar el sync real (WorkManager) y reset local de prueba.

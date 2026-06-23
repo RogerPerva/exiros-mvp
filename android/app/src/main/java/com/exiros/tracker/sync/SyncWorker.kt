@@ -6,34 +6,55 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.exiros.tracker.data.ApiClient
 import com.exiros.tracker.data.TripRepository
+import java.time.Instant
 import java.util.UUID
 
 /**
- * Drena la cola de Room enviándola por lotes GZIP al backend (3.3 → 3.4). Lo dispara
- * WorkManager (periódico cada ~15 min + on-demand). El `batchId` se deriva de los ids de los
- * puntos → un reintento del MISMO lote produce el mismo batchId y el backend lo ignora
- * (idempotencia). Sólo marca `sent` tras un envío exitoso.
+ * Drena la cola de Room al backend (3.3 → 3.4) y, si el operador pidió cerrar, manda el cierre
+ * (4.2). Idempotente: el `batchId` se deriva de los ids de los puntos y el cierre lleva su
+ * `closeRequestId` → un reintento no duplica. Si el backend indica `stopTracking` (geocerca o
+ * cierre admin) o el cierre del operador se confirma, marca el viaje CONCLUIDO localmente
+ * (→ la app pasa a M5 y el servicio se detiene).
  */
 class SyncWorker(context: Context, params: WorkerParameters) :
     CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
         val repo = TripRepository(applicationContext)
-        val trip = repo.getActiveTrip() ?: return Result.success() // sin viaje, nada que enviar
-        val pending = repo.unsentLocations(trip.tripId)
-        if (pending.isEmpty()) return Result.success()
-
-        // Idempotencia: batchId estable para el mismo conjunto de puntos (sobrevive a reintentos).
-        val seed = "${trip.tripId}:" + pending.joinToString(",") { it.id.toString() }
-        val batchId = UUID.nameUUIDFromBytes(seed.toByteArray()).toString()
+        val trip = repo.getActiveTrip() ?: return Result.success()
+        if (trip.status != "EN_RUTA") return Result.success() // ya concluido localmente
+        val api = ApiClient()
 
         return try {
-            ApiClient().sendBatch(trip.tripId, trip.tripToken, batchId, pending)
-            repo.markSent(pending.map { it.id })
-            Log.i(TAG, "Lote enviado: ${pending.size} puntos (batch $batchId)")
+            var concluded = false
+
+            val pending = repo.unsentLocations(trip.tripId)
+            if (pending.isNotEmpty()) {
+                val seed = "${trip.tripId}:" + pending.joinToString(",") { it.id.toString() }
+                val batchId = UUID.nameUUIDFromBytes(seed.toByteArray()).toString()
+                val stopTracking = api.sendBatch(trip.tripId, trip.tripToken, batchId, pending)
+                repo.markSent(pending.map { it.id })
+                if (stopTracking) concluded = true // geocerca o cierre admin cerró el viaje
+            }
+
+            if (trip.pendingClose && trip.closeRequestId != null) {
+                api.closeTrip(
+                    tripId = trip.tripId,
+                    tripToken = trip.tripToken,
+                    closeRequestId = trip.closeRequestId,
+                    requestedAt = Instant.ofEpochMilli(trip.closeRequestedAt ?: System.currentTimeMillis()).toString(),
+                    observations = trip.closeObservations.orEmpty(),
+                )
+                concluded = true
+            }
+
+            if (concluded) {
+                repo.markConcluded()
+                Log.i(TAG, "Viaje ${trip.tripId} concluido → la app detiene el rastreo")
+            }
             Result.success()
         } catch (e: Exception) {
-            Log.w(TAG, "Fallo al enviar lote, se reintentará: ${e.message}")
+            Log.w(TAG, "Fallo de sync, se reintentará: ${e.message}")
             Result.retry()
         }
     }

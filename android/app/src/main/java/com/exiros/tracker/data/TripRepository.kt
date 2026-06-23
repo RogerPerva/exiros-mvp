@@ -1,6 +1,7 @@
 package com.exiros.tracker.data
 
 import android.content.Context
+import java.util.UUID
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -59,6 +60,14 @@ class TripRepository(context: Context) {
 
     suspend fun markSent(ids: List<Long>) = dao.markSent(ids)
 
-    /** Cierra el viaje localmente (borra estado + permite volver a M2). El drenado real es 3.3+. */
+    /** Encola el cierre del operador (M4): el SyncWorker lo enviará con idempotencia. */
+    suspend fun requestClose(observations: String) {
+        dao.setPendingClose(UUID.randomUUID().toString(), System.currentTimeMillis(), observations)
+    }
+
+    /** El backend confirmó el cierre → estado local CONCLUIDO (la app pasa a M5). */
+    suspend fun markConcluded() = dao.markConcluded()
+
+    /** Olvida el viaje localmente (M5 → "Iniciar nuevo viaje" vuelve a M2). */
     suspend fun endTrip() = dao.clearActiveTrip()
 }
