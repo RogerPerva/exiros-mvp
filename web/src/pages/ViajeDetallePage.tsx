@@ -28,7 +28,7 @@ export default function ViajeDetallePage() {
   const [error, setError] = useState<string | null>(null);
   const [closing, setClosing] = useState(false);
 
-  const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
+  const isAdmin = user?.role === 'ADMIN';
 
   const load = useCallback(async () => {
     if (!id) return;

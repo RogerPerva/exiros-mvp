@@ -44,10 +44,6 @@
 .role::before {
   display: none;
 }
-.role--super {
-  background: #0d2347;
-  color: #fff;
-}
 .role--admin {
   background: #1e293b;
   color: #fff;

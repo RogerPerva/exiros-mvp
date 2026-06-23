@@ -8,8 +8,8 @@ import type { Request } from 'express';
 import type { Role } from '@prisma/client';
 import type { AuthUser } from '../auth/jwt-payload';
 
-/** Roles con acceso administrativo (Destinos/Usuarios). ADMIN ⊆ SUPER_ADMIN. */
-const ADMIN_ROLES: Role[] = ['ADMIN', 'SUPER_ADMIN'];
+/** Roles con acceso administrativo (Destinos/Usuarios). */
+const ADMIN_ROLES: Role[] = ['ADMIN'];
 
 /**
  * Exige rol administrativo. Va DESPUÉS de JwtAuthGuard (que adjunta req.user).

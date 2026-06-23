@@ -13,12 +13,10 @@ import './destinos.css';
 import './usuarios.css';
 
 const ROLE_LABEL: Record<Role, string> = {
-  SUPER_ADMIN: 'Super admin',
   ADMIN: 'Administrador',
   MONITOR: 'Monitorista',
 };
 const ROLE_CLASS: Record<Role, string> = {
-  SUPER_ADMIN: 'role--super',
   ADMIN: 'role--admin',
   MONITOR: 'role--monitor',
 };
@@ -95,7 +93,6 @@ export default function UsuariosPage() {
         />
         <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value as '' | Role)}>
           <option value="">Todos los roles</option>
-          <option value="SUPER_ADMIN">Super admin</option>
           <option value="ADMIN">Administrador</option>
           <option value="MONITOR">Monitorista</option>
         </select>
@@ -135,11 +132,7 @@ export default function UsuariosPage() {
                     <button title="Editar" onClick={() => setPanel({ open: true, editing: u })}>
                       ✏️
                     </button>
-                    {u.role === 'SUPER_ADMIN' ? (
-                      <button title="El Super admin no puede darse de baja" disabled>
-                        🔒
-                      </button>
-                    ) : u.isActive ? (
+                    {u.isActive ? (
                       <button title="Dar de baja" onClick={() => setConfirmBaja(u)}>
                         🚫
                       </button>

@@ -1,6 +1,5 @@
 import {
   ConflictException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -65,13 +64,7 @@ export class UsersService {
   }
 
   async update(id: string, input: UpdateUserInput) {
-    const user = await this.get(id);
-    // El Super admin no puede cambiar de rol (debe seguir existiendo al menos uno).
-    if (user.role === Role.SUPER_ADMIN && input.role !== Role.SUPER_ADMIN) {
-      throw new ForbiddenException(
-        'No se puede cambiar el rol del Super administrador',
-      );
-    }
+    await this.ensureExists(id);
     return this.prisma.user.update({
       where: { id },
       data: { name: input.name, role: input.role },
@@ -79,14 +72,9 @@ export class UsersService {
     });
   }
 
-  /** Baja lógica (soft delete). El Super admin no puede darse de baja. */
+  /** Baja lógica (soft delete). */
   async setActive(id: string, isActive: boolean) {
-    const user = await this.get(id);
-    if (!isActive && user.role === Role.SUPER_ADMIN) {
-      throw new ForbiddenException(
-        'No se puede dar de baja al Super administrador',
-      );
-    }
+    await this.ensureExists(id);
     return this.prisma.user.update({
       where: { id },
       data: { isActive },
@@ -94,12 +82,11 @@ export class UsersService {
     });
   }
 
-  private async get(id: string) {
+  private async ensureExists(id: string): Promise<void> {
     const user = await this.prisma.user.findUnique({
       where: { id },
-      select: { id: true, role: true },
+      select: { id: true },
     });
     if (!user) throw new NotFoundException('El usuario no existe');
-    return user;
   }
 }

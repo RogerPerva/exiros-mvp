@@ -641,22 +641,6 @@ describe('Flujo móvil (e2e)', () => {
     expect((off.body as { isActive: boolean }).isActive).toBe(false);
   });
 
-  it('protección: dar de baja a un SUPER_ADMIN → 403', async () => {
-    const sa = await prisma.user.create({
-      data: {
-        email: `e2e-users-sa-${Date.now()}@exiros.com`,
-        name: 'E2E Super',
-        passwordHash: await bcrypt.hash('superpass123', 10),
-        role: Role.SUPER_ADMIN,
-      },
-    });
-    const res = await request(app.getHttpServer())
-      .patch(`/api/web/users/${sa.id}/deactivate`)
-      .set('Authorization', `Bearer ${adminToken}`);
-    expect(res.status).toBe(403);
-    await prisma.user.delete({ where: { id: sa.id } }).catch(() => undefined);
-  });
-
   // --- Detalle de viaje (10.4) ---
   it('GET /api/web/trips/:id sin token → 401', async () => {
     const res = await request(app.getHttpServer()).get(

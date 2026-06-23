@@ -3,7 +3,6 @@ import { useAuth } from './auth-context';
 import './Layout.css';
 
 const ROLE_LABEL: Record<string, string> = {
-  SUPER_ADMIN: 'Super administrador',
   ADMIN: 'Administrador',
   MONITOR: 'Monitorista',
 };
@@ -11,8 +10,8 @@ const ROLE_LABEL: Record<string, string> = {
 /** Shell del portal (10.1): sidebar navy + header con usuario + <Outlet> de la sección. */
 export default function Layout() {
   const { user, logout } = useAuth();
-  // Destinos y Usuarios solo para Admin+ (el backend también lo valida — no basta ocultar).
-  const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
+  // Destinos y Usuarios solo para Admin (el backend también lo valida — no basta ocultar).
+  const isAdmin = user?.role === 'ADMIN';
   const initials = (user?.name ?? '?')
     .split(' ')
     .slice(0, 2)

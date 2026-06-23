@@ -3,7 +3,6 @@ import { createUser, updateUser, type Role, type StaffUser } from '../api';
 import './usuarios.css';
 
 const ROLES: { value: Role; label: string }[] = [
-  { value: 'SUPER_ADMIN', label: 'Super administrador' },
   { value: 'ADMIN', label: 'Administrador' },
   { value: 'MONITOR', label: 'Monitorista' },
 ];
