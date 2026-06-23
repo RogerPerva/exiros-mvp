@@ -35,6 +35,8 @@ data class ActiveTripEntity(
     val closeRequestId: String? = null,
     val closeRequestedAt: Long? = null,
     val closeObservations: String? = null,
+    /** Motivo del cierre (AUTO_GEOFENCE / MANUAL_OPERATOR / MANUAL_ADMIN); null mientras EN_RUTA. */
+    val closureType: String? = null,
     val createdAt: Long,
 ) {
     companion object {
@@ -79,8 +81,8 @@ interface TripDao {
     )
     suspend fun setPendingClose(rid: String, at: Long, obs: String)
 
-    @Query("UPDATE active_trip SET status = 'CONCLUIDO', pendingClose = 0 WHERE id = 1")
-    suspend fun markConcluded()
+    @Query("UPDATE active_trip SET status = 'CONCLUIDO', pendingClose = 0, closureType = :closureType WHERE id = 1")
+    suspend fun markConcluded(closureType: String?)
 
     @Insert
     suspend fun insertLocation(point: LocationEntity)
@@ -98,7 +100,7 @@ interface TripDao {
     suspend fun markSent(ids: List<Long>)
 }
 
-@Database(entities = [ActiveTripEntity::class, LocationEntity::class], version = 2, exportSchema = false)
+@Database(entities = [ActiveTripEntity::class, LocationEntity::class], version = 3, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun tripDao(): TripDao
 

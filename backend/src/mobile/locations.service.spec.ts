@@ -17,7 +17,9 @@ describe('LocationsService.addBatch', () => {
       },
       trip: {
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
-        findUnique: jest.fn().mockResolvedValue({ status: 'CONCLUIDO' }),
+        findUnique: jest
+          .fn()
+          .mockResolvedValue({ status: 'CONCLUIDO', closureType: 'AUTO_GEOFENCE' }),
       },
     };
     service = new LocationsService(prisma as never);
@@ -60,7 +62,11 @@ describe('LocationsService.addBatch', () => {
 
     expect(res.accepted).toBe(2);
     expect(res.duplicateBatch).toBe(false);
-    expect(res.trip).toEqual({ status: 'EN_RUTA', stopTracking: false });
+    expect(res.trip).toEqual({
+      status: 'EN_RUTA',
+      stopTracking: false,
+      closureType: null,
+    });
     const calls = prisma.location.createMany.mock.calls as Array<
       [
         {
@@ -155,7 +161,11 @@ describe('LocationsService.addBatch', () => {
 
     const res = await service.addBatch(trip(), dto);
 
-    expect(res.trip).toEqual({ status: 'CONCLUIDO', stopTracking: true });
+    expect(res.trip).toEqual({
+      status: 'CONCLUIDO',
+      stopTracking: true,
+      closureType: 'AUTO_GEOFENCE',
+    });
     const upd = prisma.trip.updateMany.mock.calls.find(
       (c: unknown[]) =>
         (c[0] as { data?: { status?: string } }).data?.status === 'CONCLUIDO',
@@ -195,12 +205,15 @@ describe('LocationsService.addBatch', () => {
       },
     ]);
 
-    const res = await service.addBatch(trip({ status: 'CONCLUIDO' }), dto);
+    const res = await service.addBatch(
+      trip({ status: 'CONCLUIDO', closureType: 'MANUAL_ADMIN' }),
+      dto,
+    );
 
     expect(res).toEqual({
       accepted: 0,
       duplicateBatch: false,
-      trip: { status: 'CONCLUIDO', stopTracking: true },
+      trip: { status: 'CONCLUIDO', stopTracking: true, closureType: 'MANUAL_ADMIN' },
     });
     expect(prisma.location.createMany).not.toHaveBeenCalled();
   });

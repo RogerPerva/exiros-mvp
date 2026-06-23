@@ -82,6 +82,14 @@ fun FinalizarScreen(onCancel: () -> Unit, onConfirm: (observations: String) -> U
     }
 }
 
+/** Etiqueta legible del motivo de cierre para mostrar al operador en M5. */
+private fun closureLabel(closureType: String?): String = when (closureType) {
+    "AUTO_GEOFENCE" -> "Cierre automático por geocerca"
+    "MANUAL_OPERATOR" -> "Cierre manual por operador"
+    "MANUAL_ADMIN" -> "Cierre manual por administrador"
+    else -> "Viaje concluido"
+}
+
 /** M5 — Viaje concluido. El rastreo ya se detuvo; permite iniciar uno nuevo. */
 @Composable
 fun ConcluidoScreen(trip: ActiveTripEntity, onNewTrip: () -> Unit) {
@@ -98,6 +106,12 @@ fun ConcluidoScreen(trip: ActiveTripEntity, onNewTrip: () -> Unit) {
             modifier = Modifier.size(72.dp),
         )
         Text("Viaje concluido", color = ExirosNavy, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+        Text(
+            closureLabel(trip.closureType),
+            color = Success,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
         Text(
             "${trip.providerName} · Folio ${trip.folio}",
             color = TextPrimary,

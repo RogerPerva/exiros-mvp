@@ -65,8 +65,8 @@ class TripRepository(context: Context) {
         dao.setPendingClose(UUID.randomUUID().toString(), System.currentTimeMillis(), observations)
     }
 
-    /** El backend confirmó el cierre → estado local CONCLUIDO (la app pasa a M5). */
-    suspend fun markConcluded() = dao.markConcluded()
+    /** El backend confirmó el cierre → estado local CONCLUIDO + motivo (la app pasa a M5). */
+    suspend fun markConcluded(closureType: String?) = dao.markConcluded(closureType)
 
     /** Olvida el viaje localmente (M5 → "Iniciar nuevo viaje" vuelve a M2). */
     suspend fun endTrip() = dao.clearActiveTrip()

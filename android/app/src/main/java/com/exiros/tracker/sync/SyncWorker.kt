@@ -26,15 +26,15 @@ class SyncWorker(context: Context, params: WorkerParameters) :
         val api = ApiClient()
 
         return try {
-            var concluded = false
+            // Motivo de cierre: lo da el backend (geocerca/admin) o, si fue el operador, es local.
+            var closureType: String? = null
 
             val pending = repo.unsentLocations(trip.tripId)
             if (pending.isNotEmpty()) {
                 val seed = "${trip.tripId}:" + pending.joinToString(",") { it.id.toString() }
                 val batchId = UUID.nameUUIDFromBytes(seed.toByteArray()).toString()
-                val stopTracking = api.sendBatch(trip.tripId, trip.tripToken, batchId, pending)
+                closureType = api.sendBatch(trip.tripId, trip.tripToken, batchId, pending)
                 repo.markSent(pending.map { it.id })
-                if (stopTracking) concluded = true // geocerca o cierre admin cerró el viaje
             }
 
             if (trip.pendingClose && trip.closeRequestId != null) {
@@ -45,12 +45,13 @@ class SyncWorker(context: Context, params: WorkerParameters) :
                     requestedAt = Instant.ofEpochMilli(trip.closeRequestedAt ?: System.currentTimeMillis()).toString(),
                     observations = trip.closeObservations.orEmpty(),
                 )
-                concluded = true
+                // Si la geocerca/admin no lo había cerrado ya, el motivo es cierre por operador.
+                if (closureType == null) closureType = "MANUAL_OPERATOR"
             }
 
-            if (concluded) {
-                repo.markConcluded()
-                Log.i(TAG, "Viaje ${trip.tripId} concluido → la app detiene el rastreo")
+            if (closureType != null) {
+                repo.markConcluded(closureType)
+                Log.i(TAG, "Viaje ${trip.tripId} concluido ($closureType) → la app detiene el rastreo")
             }
             Result.success()
         } catch (e: Exception) {

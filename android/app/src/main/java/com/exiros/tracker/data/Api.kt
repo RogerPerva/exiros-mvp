@@ -109,14 +109,15 @@ class ApiClient {
     /**
      * Envía un lote de puntos comprimido con GZIP (3.3 → 3.4). `batchId` da idempotencia:
      * reenviar el mismo lote no duplica en el backend. Lanza si la respuesta no es 2xx
-     * (el WorkManager decide reintentar). Devuelve `stopTracking` (lo usará Fase 4).
+     * (el WorkManager decide reintentar). Devuelve el `closureType` si el backend ordenó
+     * detener el rastreo (geocerca/admin cerraron el viaje), o `null` si sigue EN_RUTA.
      */
     suspend fun sendBatch(
         tripId: String,
         tripToken: String,
         batchId: String,
         points: List<LocationEntity>,
-    ): Boolean = withContext(Dispatchers.IO) {
+    ): String? = withContext(Dispatchers.IO) {
         val arr = JSONArray()
         for (p in points) {
             arr.put(
@@ -138,10 +139,17 @@ class ApiClient {
         client.newCall(req).execute().use { res ->
             val resBody = res.body?.string().orEmpty()
             if (!res.isSuccessful) error("batch HTTP ${res.code}: $resBody")
-            // Contrato IngestResponse: { accepted, duplicateBatch, trip: { status, stopTracking } }.
+            // Contrato IngestResponse: { accepted, duplicateBatch, trip: { status, stopTracking, closureType } }.
             runCatching {
-                JSONObject(resBody).getJSONObject("trip").optBoolean("stopTracking", false)
-            }.getOrDefault(false)
+                val tripObj = JSONObject(resBody).getJSONObject("trip")
+                if (tripObj.optBoolean("stopTracking", false)) {
+                    // Si falta o viene null, asumir geocerca (el caso más común de stopTracking).
+                    if (tripObj.isNull("closureType")) "AUTO_GEOFENCE"
+                    else tripObj.optString("closureType", "AUTO_GEOFENCE")
+                } else {
+                    null
+                }
+            }.getOrDefault(null)
         }
     }
 

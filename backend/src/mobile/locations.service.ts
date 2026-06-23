@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { Trip, TripStatus } from '@prisma/client';
+import type { ClosureType, Trip, TripStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { IngestBatchDto, IngestPointDto } from './dto/ingest-batch.dto';
 
@@ -16,7 +16,12 @@ const EARTH_RADIUS_M = 6_371_000;
 export interface IngestResult {
   accepted: number;
   duplicateBatch: boolean;
-  trip: { status: TripStatus; stopTracking: boolean };
+  trip: {
+    status: TripStatus;
+    stopTracking: boolean;
+    /** Motivo del cierre cuando el viaje quedó CONCLUIDO; null si sigue EN_RUTA. */
+    closureType: ClosureType | null;
+  };
 }
 
 /**
@@ -37,7 +42,11 @@ export class LocationsService {
       return {
         accepted: 0,
         duplicateBatch: false,
-        trip: { status: trip.status, stopTracking: true },
+        trip: {
+          status: trip.status,
+          stopTracking: true,
+          closureType: trip.closureType,
+        },
       };
     }
 
@@ -73,6 +82,8 @@ export class LocationsService {
 
     const duplicateBatch = valid.length > 0 && accepted === 0;
     const closed = await this.evaluateGeofence(trip);
+    // Si cerró (por esta geocerca o por otro actor concurrente), leer el motivo real.
+    const closureType = closed ? await this.getClosureType(trip.id) : null;
 
     return {
       accepted,
@@ -80,8 +91,18 @@ export class LocationsService {
       trip: {
         status: closed ? 'CONCLUIDO' : 'EN_RUTA',
         stopTracking: closed,
+        closureType,
       },
     };
+  }
+
+  /** Motivo de cierre actual del viaje (puede haberlo puesto otro actor en una carrera). */
+  private async getClosureType(tripId: string): Promise<ClosureType | null> {
+    const t = await this.prisma.trip.findUnique({
+      where: { id: tripId },
+      select: { closureType: true },
+    });
+    return t?.closureType ?? null;
   }
 
   /**
