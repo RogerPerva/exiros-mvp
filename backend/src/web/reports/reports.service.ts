@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma, TripStatus, ClosureType } from '@prisma/client';
 import { Workbook } from 'exceljs';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../../prisma/prisma.service';
 import { ReportQueryDto } from './dto/report-query.dto';
 
 /**

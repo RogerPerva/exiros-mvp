@@ -7,10 +7,10 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import { CurrentUser, JwtAuthGuard } from '../common/jwt-auth.guard';
-import { AdminRolesGuard } from '../common/roles.guard';
-import type { AuthUser } from '../auth/jwt-payload';
-import { TripCloseService } from '../trips/trip-close.service';
+import { CurrentUser, JwtAuthGuard } from '../../common/jwt-auth.guard';
+import { AdminRolesGuard } from '../../common/roles.guard';
+import type { AuthUser } from '../../auth/jwt-payload';
+import { TripCloseService } from '../../trips/trip-close.service';
 import { WebTripsService } from './web-trips.service';
 import { WebCloseTripDto } from './dto/web-close.dto';
 

@@ -7,9 +7,9 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import { CurrentUser, JwtAuthGuard } from '../common/jwt-auth.guard';
-import { AdminRolesGuard } from '../common/roles.guard';
-import type { AuthUser } from '../auth/jwt-payload';
+import { CurrentUser, JwtAuthGuard } from '../../common/jwt-auth.guard';
+import { AdminRolesGuard } from '../../common/roles.guard';
+import type { AuthUser } from '../../auth/jwt-payload';
 import { UsersService } from './users.service';
 import { CreateUserDto, UpdateUserDto } from './dto/user.dto';
 

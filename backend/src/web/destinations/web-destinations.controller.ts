@@ -7,10 +7,10 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import { CurrentUser, JwtAuthGuard } from '../common/jwt-auth.guard';
-import { AdminRolesGuard } from '../common/roles.guard';
-import type { AuthUser } from '../auth/jwt-payload';
-import { DestinationsService } from '../destinations/destinations.service';
+import { CurrentUser, JwtAuthGuard } from '../../common/jwt-auth.guard';
+import { AdminRolesGuard } from '../../common/roles.guard';
+import type { AuthUser } from '../../auth/jwt-payload';
+import { DestinationsService } from '../../destinations/destinations.service';
 import { DestinationDto } from './dto/destination.dto';
 
 /**

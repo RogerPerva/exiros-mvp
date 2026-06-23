@@ -6,7 +6,7 @@ import { PrismaClient, Role } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import * as bcrypt from 'bcryptjs';
 import { Workbook } from 'exceljs';
-import { REPORT_HEADERS } from '../src/web/reports.service';
+import { REPORT_HEADERS } from '../src/web/reports/reports.service';
 import { AppModule } from '../src/app.module';
 import { setupApp } from '../src/main';
 

@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../../prisma/prisma.service';
 
 /** Lectura de viajes para el portal (W1/W2): activos primero, luego recientes. */
 @Injectable()
