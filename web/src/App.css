@@ -48,6 +48,28 @@
   cursor: default;
 }
 
+.portal-user {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #e2e8f0;
+  padding-left: 0.5rem;
+}
+
+.portal-logout {
+  background: transparent;
+  color: #c3ccd6;
+  border: 1px solid #3b4654;
+  border-radius: 8px;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.portal-logout:hover {
+  color: #fff;
+  border-color: #64748b;
+}
+
 .portal-main {
   flex: 1;
 }

@@ -25,6 +25,8 @@ export class ReportsController {
       'Content-Type': XLSX_MIME,
       'Content-Disposition': `attachment; filename="${filename}"`,
       'Content-Length': String(buffer.length),
+      // El portal (otro origen) necesita leer el nombre del archivo del header.
+      'Access-Control-Expose-Headers': 'Content-Disposition',
     });
     res.end(buffer);
   }
