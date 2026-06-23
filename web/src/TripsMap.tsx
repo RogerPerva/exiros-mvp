@@ -1,61 +1,78 @@
-import { Circle, CircleMarker, MapContainer, Popup, TileLayer } from 'react-leaflet';
+import {
+  Circle,
+  CircleMarker,
+  LayersControl,
+  LayerGroup,
+  MapContainer,
+  Popup,
+  TileLayer,
+} from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { Trip } from './api';
 
 /**
- * Mapa de tránsito W1. Pinta el último punto de cada viaje EN_RUTA + la geocerca de su
- * destino. Usa CircleMarker para evitar el problema de los iconos PNG de Leaflet con
- * bundlers (Vite). El refresco (polling) lo controla App.tsx.
+ * Mapa de tránsito W1 (10.2). Pinta el último punto de cada viaje EN_RUTA + la geocerca de
+ * su destino, con control de capas (Mapa / Satélite / Geocercas). Clusters = diferido
+ * (ver PLAN: optimización para alto volumen). Usa CircleMarker para evitar el problema de
+ * los iconos PNG de Leaflet con bundlers (Vite).
  */
 export default function TripsMap({ trips }: { trips: Trip[] }) {
-  // Mapa de tránsito = sólo camiones EN_RUTA (un viaje concluido no está "en tránsito").
   const active = trips.filter((t) => t.status === 'EN_RUTA');
   const withLocation = active.filter((t) => t.lastLocation !== null);
-  // Centro: último punto disponible, o Monterrey por defecto.
   const center: [number, number] = withLocation[0]?.lastLocation
     ? [withLocation[0].lastLocation.lat, withLocation[0].lastLocation.lng]
     : [25.6866, -100.3161];
 
   return (
-    <MapContainer center={center} zoom={11} style={{ height: '360px', width: '100%' }}>
-      <TileLayer
-        attribution='&copy; OpenStreetMap'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
-      {active.map((t) => {
-        const items = [];
-        // Geocerca del destino (círculo del radio asignado).
-        if (t.destination) {
-          items.push(
-            <Circle
-              key={`geo-${t.id}`}
-              center={[t.destination.centerLat, t.destination.centerLng]}
-              radius={300}
-              pathOptions={{ color: '#1565C0', fillOpacity: 0.08 }}
-            />,
-          );
-        }
-        // Último punto de ruta del camión.
-        if (t.lastLocation) {
-          items.push(
-            <CircleMarker
-              key={`loc-${t.id}`}
-              center={[t.lastLocation.lat, t.lastLocation.lng]}
-              radius={8}
-              pathOptions={{ color: '#C62828', fillColor: '#C62828', fillOpacity: 0.9 }}
-            >
-              <Popup>
-                <strong>{t.folio}</strong> · {t.frontPlate}
-                <br />
-                {t.providerName}
-                <br />
-                {t.lastLocation.lat.toFixed(4)}, {t.lastLocation.lng.toFixed(4)}
-              </Popup>
-            </CircleMarker>,
-          );
-        }
-        return items;
-      })}
+    <MapContainer center={center} zoom={6} style={{ height: '100%', width: '100%' }}>
+      <LayersControl position="topright">
+        <LayersControl.BaseLayer checked name="Mapa">
+          <TileLayer
+            attribution="&copy; OpenStreetMap"
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+        </LayersControl.BaseLayer>
+        <LayersControl.BaseLayer name="Satélite">
+          <TileLayer
+            attribution="&copy; Esri"
+            url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+          />
+        </LayersControl.BaseLayer>
+
+        <LayersControl.Overlay checked name="Geocercas">
+          <LayerGroup>
+            {active.map((t) =>
+              t.destination ? (
+                <Circle
+                  key={`geo-${t.id}`}
+                  center={[t.destination.centerLat, t.destination.centerLng]}
+                  radius={300}
+                  pathOptions={{ color: '#0D479C', fillOpacity: 0.08 }}
+                />
+              ) : null,
+            )}
+          </LayerGroup>
+        </LayersControl.Overlay>
+      </LayersControl>
+
+      {active.map((t) =>
+        t.lastLocation ? (
+          <CircleMarker
+            key={`loc-${t.id}`}
+            center={[t.lastLocation.lat, t.lastLocation.lng]}
+            radius={8}
+            pathOptions={{ color: '#16A34A', fillColor: '#16A34A', fillOpacity: 0.9 }}
+          >
+            <Popup>
+              <strong>{t.folio}</strong> · {t.frontPlate}
+              <br />
+              {t.providerName}
+              <br />
+              {t.destination?.name ?? '—'}
+            </Popup>
+          </CircleMarker>
+        ) : null,
+      )}
     </MapContainer>
   );
 }
