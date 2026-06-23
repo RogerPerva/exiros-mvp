@@ -106,13 +106,26 @@ describe('Flujo móvil (e2e)', () => {
   });
 
   afterAll(async () => {
-    await prisma.trip.deleteMany({ where: { deviceId } }); // cascada borra locations
+    // Borra TODOS los viajes de este destino (incluye los creados para los tests de cierre).
+    await prisma.trip.deleteMany({ where: { destinationId: destId } });
     await prisma.destination
       .delete({ where: { id: destId } })
       .catch(() => undefined);
     await prisma.$disconnect();
     await app.close();
   });
+
+  /** Crea un viaje EN_RUTA con deviceId/crid propios (para tests de cierre). */
+  async function makeTrip(
+    suffix: string,
+  ): Promise<{ id: string; token: string }> {
+    const res = await postTrip({
+      deviceId: `e2e-${suffix}-${Date.now()}`,
+      clientRequestId: `crid-${suffix}-${Date.now()}`,
+    });
+    const b = res.body as TripResp;
+    return { id: b.tripId, token: b.tripToken };
+  }
 
   it('GET /destinations sin X-App-Key → 401 con formato de error único', async () => {
     const res = await request(app.getHttpServer()).get(
@@ -296,5 +309,76 @@ describe('Flujo móvil (e2e)', () => {
     expect(body.accepted).toBe(0);
     expect(body.trip.status).toBe('CONCLUIDO');
     expect(body.trip.stopTracking).toBe(true);
+  });
+
+  // --- Cierres manuales (4.2 operador / 4.3 admin) ---
+  it('cierre operador (móvil) → 200 MANUAL_OPERATOR; replay del mismo closeRequestId es idempotente', async () => {
+    const t = await makeTrip('opclose');
+    const closeRequestId = randomUUID();
+    const requestedAt = new Date().toISOString();
+    const send = () =>
+      request(app.getHttpServer())
+        .post(`/api/mobile/trips/${t.id}/close`)
+        .set('Authorization', `Bearer ${t.token}`)
+        .send({
+          observations: 'Entrega cancelada',
+          requestedAt,
+          closeRequestId,
+        });
+
+    const first = await send();
+    expect(first.status).toBe(200);
+    expect((first.body as { closureType: string }).closureType).toBe(
+      'MANUAL_OPERATOR',
+    );
+
+    const replay = await send(); // mismo closeRequestId → idempotente, no 409
+    expect(replay.status).toBe(200);
+    expect((replay.body as { status: string }).status).toBe('CONCLUIDO');
+  });
+
+  it('cierre operador con requestedAt futuro → 400', async () => {
+    const t = await makeTrip('opfuture');
+    const res = await request(app.getHttpServer())
+      .post(`/api/mobile/trips/${t.id}/close`)
+      .set('Authorization', `Bearer ${t.token}`)
+      .send({
+        observations: 'x',
+        requestedAt: new Date(Date.now() + 10 * 60_000).toISOString(),
+        closeRequestId: randomUUID(),
+      });
+    expect(res.status).toBe(400);
+  });
+
+  it('cierre admin (web) → 200 MANUAL_ADMIN', async () => {
+    const t = await makeTrip('adminclose');
+    const res = await request(app.getHttpServer())
+      .post(`/api/web/trips/${t.id}/close`)
+      .send({ observations: 'Cierre administrativo' });
+    expect(res.status).toBe(200);
+    expect((res.body as { closureType: string }).closureType).toBe(
+      'MANUAL_ADMIN',
+    );
+  });
+
+  it('carrera: segundo cierre distinto → 409 TRIP_ALREADY_CONCLUDED', async () => {
+    const t = await makeTrip('race');
+    const first = await request(app.getHttpServer())
+      .post(`/api/web/trips/${t.id}/close`)
+      .send({ observations: 'gana admin' });
+    expect(first.status).toBe(200);
+
+    const second = await request(app.getHttpServer())
+      .post(`/api/mobile/trips/${t.id}/close`)
+      .set('Authorization', `Bearer ${t.token}`)
+      .send({
+        observations: 'pierde operador',
+        requestedAt: new Date().toISOString(),
+        closeRequestId: randomUUID(),
+      });
+    expect(second.status).toBe(409);
+    expect((second.body as { message: string }).message).toBe(
+      'TRIP_ALREADY_CONCLUDED',
+    );
   });
 });
