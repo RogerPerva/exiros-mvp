@@ -6,9 +6,12 @@
 > **Ventana:** 16–26 jun 2026. Presentación **viernes 26 jun**. Hoy es **17 jun 2026** → quedan 9 días de trabajo + presentación.
 > **Naturaleza:** competencia interna iWA. El equipo ganador continúa el proyecto. El código de `main` será auditado (César/Emanuel) con rúbrica y probado por usuario (Neto). **La calidad del repo y que la demo no se rompa pesan tanto como las features.**
 
+> **🟢 ESTADO (2026-06-23): TODAS las Fases 1–10 completas y pusheadas; MVP funcional e2e (verificado en emulador real).** Lo único pendiente es la validación humana (`✔ Confirmado`) y opcionales post-MVP. El estado vivo y el "cómo levantar" están en [`CONTEXT-AI.md`](CONTEXT-AI.md) (checkpoint vigente). Lo de abajo (decisiones, fases, bitácora) se conserva como **rastro de auditoría**: refleja el plan y su historia, no tareas abiertas.
+
 ---
 
 ## ⚠️ DECISIONES QUE NECESITO QUE VALIDES (antes de Día 1)
+> **✅ RESUELTAS (2026-06-23):** **D1** → Opción A, **Kotlin nativo** (ADR-004, implementado en Fases 1–4). **D2** → **túnel cloudflared** (bloque 9.1; `scripts/tunnel.sh`); deploy cloud real pospuesto (a confirmar con Julio si se quiere). Se conservan abajo por trazabilidad.
 
 Estas dos bifurcan la mitad del plan. Mientras no las confirmes, asumo el valor por defecto marcado y sigo.
 
