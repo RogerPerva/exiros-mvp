@@ -596,7 +596,7 @@ Cierra los huecos que dependen de nosotros (distintos de H1–H11, que dependen 
 
 #### Fase 6 — Auth web + usuarios (Slice 7)
 - [x] **6.1 `[BE]`** Módulo auth JWT + Guard JWT + `POST /auth/login`. **(pendiente confirmar humano)** *(2026-06-22: hecho. `AuthModule` con `@nestjs/jwt`+`bcryptjs`; `POST /api/web/auth/login` (público, 401 genérico, compare con hash dummy para no filtrar existencia por timing) + `GET /api/web/auth/me`; `JwtAuthGuard` custom (verifica Bearer JWT, adjunta `req.user`) + `@CurrentUser()`, aplicado explícito en `WebTripsController` (no global → móvil y login intactos); cierre admin ya llena `closedById` real (cierra el TODO). Seed idempotente `prisma/seed.ts` (admin@exiros.com / admin1234, env `SEED_ADMIN_*`) vía `npx prisma db seed`. Env nuevos: `JWT_SECRET`, `JWT_EXPIRES_IN`. **Gotcha:** añadir `prisma/seed.ts` movió el build a `dist/src/main.js` → excluido `prisma` en `tsconfig.build.json` para conservar `node dist/main.js`. Verificado: e2e 28/28 (7 nuevos de auth) + unit 21/21 + smoke curl real (login→token, 401 sin/ con token basura, 200 con token, /me, móvil 401 intacto). FUERA, anotado: CRUD usuarios/RolesGuard ADMIN = 6.2; W0 login web + W5 = 6.3.)*
-- **6.2 `[BE]`** CRUD usuarios + Guard de rol ADMIN.
+- **6.2 `[BE]`** CRUD usuarios + Guard de rol ADMIN. **Decidido 2026-06-22:** modelo con **3 roles** (`SUPER_ADMIN`, `ADMIN`, `MONITOR`) fiel al diseño; Super admin protegido (no baja, no cambio de rol, siempre ≥1) — backend bloquea. Acceso a Usuarios/Destinos exclusivo de Admin+ (validar en backend, no solo ocultar en UI).
 - **6.3 `[WEB]`** W0 login + rutas protegidas + W5 gestión usuarios. **Hecho cuando:** sin token no se entra; admin da de alta un monitorista que luego entra. *(2026-06-22: PARCIAL — adelantado como enabler de 7.2, que necesitaba sesión web. HECHO: W0 login (split-screen al diseño), token+usuario en localStorage, `Authorization` en toda llamada `/api/web/*`, gate de sesión (sin token → login), botón "Salir", 401→logout automático. Verificado en navegador (Playwright). FALTA para cerrar 6.3: **W5 gestión de usuarios** (depende de 6.2 CRUD usuarios) y "¿olvidaste tu contraseña?" (fuera de MVP). Routing real (react-router) no añadido: el portal es una sola vista; el shell+sidebar es bloque WEB posterior.)*
 
 #### Fase 7 — Reportes Excel (Slice 6)
@@ -611,6 +611,16 @@ Cierra los huecos que dependen de nosotros (distintos de H1–H11, que dependen 
 - **9.1 `[INF]`** Túnel cloudflared (dev) + deploy Railway/Render + Postgres managed (demo).
 - **9.2 `[SCRIPT]`** Simulador de ruta (reproduce GPX / mock locations) para la demo (H3).
 - **9.3 `[DOC]`** README de arranque + ensayo de demo. **Hecho cuando:** la demo e2e corre 2 veces seguidas sin fallar.
+
+#### Fase 10 — Portal web fiel al diseño (shell + 6 pantallas)
+> Referencia obligatoria: `docs/exiros-reference-image/webapp/` + `documentacion UX-UI.md`. Replicar, no improvisar. Ver renderizado (Playwright) antes de entregar cada pantalla. **Decisiones (2026-06-22):** 3 roles fieles (Super admin protegido) · estados-mapa derivados POSPUESTOS (solo En ruta/Concluido por ahora).
+> **Corrección 2026-06-22:** el portal actual (vista única con Mapa+tarjetas+Export) está MAL. El export es de **Viajes (W2)**, no de Mapa. La vista única se reemplaza por el shell+sidebar.
+- **10.1 `[WEB]`** Shell: sidebar (logo + Mapa·Viajes·Destinos·Usuarios + Cerrar sesión; Destinos/Usuarios solo Admin) + header (nombre/rol) + routing (react-router) entre secciones sin recargar. Reubica el login dentro del shell. **Hecho cuando:** se navega entre secciones por el sidebar; sin token → login; Monitorista no ve Destinos/Usuarios.
+- **10.2 `[WEB]`** W1 Mapa "Monitoreo en tiempo real": KPIs (En ruta/Concluidos por ahora), buscador + filtros, capas (Mapa/Satélite/Geocercas/Clusters), clusters. **SIN export.**
+- **10.3 `[WEB]`** W2 Viajes: tabla (Folio/Proveedor/Destino/Placa/Estado/Inicio) + filtros (buscador/Estado/rango fechas/Destino) + paginación + **"Exportar a Excel"** (mover aquí el export de 7.2) + ojo→detalle.
+- **10.4 `[BE+WEB]`** W3 Viaje seleccionado: `GET /api/web/trips/:id` (datos+cierre+foto+puntos de ruta) + pantalla detalle (Datos/Cierre/Foto/mapa "Ruta recorrida").
+- **10.5 `[WEB]`** W4 Destinos: tabla (Nombre/Centro/Radio/Maps/Estado/Acciones) + modal "Nuevo/Editar destino" con mapa para fijar pin + radio (máx 700 m) + baja/restaurar. *(BE = Fase 5.1.)*
+- **10.6 `[WEB]`** W5 Usuarios: tabla (Nombre/Correo/Rol/Estado/Acciones) + panel lateral "Nuevo usuario" + modal "Dar de baja". Super admin con candado (no baja). *(BE = 6.2 con rol SUPER_ADMIN.)*
 
 ---
 
