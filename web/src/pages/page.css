@@ -1,0 +1,51 @@
+.page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+.page-title {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+.page-sub {
+  margin: 0.25rem 0 0;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+.page-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.page-updated {
+  font-size: 0.8rem;
+  color: #94a3b8;
+}
+
+.btn-secondary {
+  background: #fff;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-secondary:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.page-state {
+  color: #64748b;
+  padding: 1rem 0;
+}
+.page-error {
+  color: #b91c1c;
+  padding: 0.5rem 0;
+}

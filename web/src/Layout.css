@@ -1,0 +1,130 @@
+.shell {
+  display: grid;
+  grid-template-columns: 230px 1fr;
+  min-height: 100vh;
+  font-family: 'Inter', system-ui, sans-serif;
+  background: #f8fafc;
+}
+
+/* --- Sidebar navy --- */
+.shell-sidebar {
+  background: #0d2347;
+  color: #cbd5e1;
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem 1rem;
+}
+
+.shell-logo {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.5px;
+  padding: 0 0.6rem;
+  margin-bottom: 2.5rem;
+}
+.shell-logo span {
+  color: #fff;
+}
+
+.shell-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex: 1;
+}
+
+.shell-navitem {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.7rem 0.9rem;
+  border-radius: 10px;
+  color: #cbd5e1;
+  text-decoration: none;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+.shell-navitem:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+.shell-navitem.active {
+  background: #1d6fe0;
+  color: #fff;
+}
+.shell-navicon {
+  font-size: 1rem;
+}
+
+.shell-logout {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0.7rem 0.9rem;
+  cursor: pointer;
+  text-align: left;
+}
+.shell-logout:hover {
+  color: #fff;
+}
+
+/* --- Body --- */
+.shell-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.shell-header {
+  height: 64px;
+  background: #fff;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 1.5rem;
+}
+
+.shell-user {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.shell-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #0d2347;
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.shell-userinfo {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+.shell-userinfo strong {
+  font-size: 0.85rem;
+  color: #0f172a;
+}
+.shell-userinfo small {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.shell-main {
+  flex: 1;
+  padding: 1.75rem 2rem;
+  min-width: 0;
+}

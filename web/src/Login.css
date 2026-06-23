@@ -13,17 +13,10 @@
   background: #fff;
 }
 
-.login-brand {
-  font-size: 1.4rem;
-  font-weight: 800;
-  color: #0d479c;
+.login-logo {
+  width: 150px;
+  height: auto;
   margin-bottom: 3rem;
-}
-.login-brand span {
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: #64748b;
-  margin-left: 0.4rem;
 }
 
 .login-panel h1 {

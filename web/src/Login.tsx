@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { login, type AuthUser } from './api';
-import hero from './assets/hero.png';
+import logo from './assets/exiros-logo.png';
+import hero from './assets/oficina-exiros.jpg';
 import './Login.css';
 
 /** W0 — Login del staff (Fase 6.1/6.3). Al autenticar, eleva el usuario al App. */
@@ -28,9 +29,7 @@ export default function Login({ onLogin }: { onLogin: (user: AuthUser) => void }
   return (
     <div className="login-page">
       <section className="login-panel">
-        <div className="login-brand">
-          exiros<span>·On-Route Tracker</span>
-        </div>
+        <img className="login-logo" src={logo} alt="Exiros" />
         <h1>Iniciar sesión</h1>
         <p className="login-sub">Ingresa tus credenciales para acceder al sistema</p>
 

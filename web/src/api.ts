@@ -3,7 +3,7 @@ export const API_BASE: string =
   (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:3000';
 
 export type TripStatus = 'EN_RUTA' | 'CONCLUIDO';
-export type Role = 'ADMIN' | 'MONITOR';
+export type Role = 'SUPER_ADMIN' | 'ADMIN' | 'MONITOR';
 
 /** Usuario autenticado (UserPublic del backend, sin passwordHash). */
 export interface AuthUser {
