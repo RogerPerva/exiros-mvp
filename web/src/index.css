@@ -1,6 +1,8 @@
 :root {
   font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
-  color-scheme: light dark;
+  /* Diseño solo claro (sigue las capturas de referencia). Forzar light evita que el
+     modo oscuro del SO pinte los inputs nativos en negro (modal Nuevo destino, etc.). */
+  color-scheme: light;
 }
 
 html,
