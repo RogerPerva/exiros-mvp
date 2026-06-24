@@ -31,7 +31,7 @@ object SyncScheduler {
         )
     }
 
-    /** Fuerza un envío inmediato (botón de debug / al anticipar llegada en Fase 4). */
+    /** Fuerza un envío inmediato (al anticipar la llegada a la geocerca o al cerrar el operador). */
     fun syncNow(context: Context) {
         val request = OneTimeWorkRequestBuilder<SyncWorker>()
             .setConstraints(networkConstraint)

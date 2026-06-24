@@ -20,6 +20,12 @@ class TripRepository(context: Context) {
 
     fun lastLocation(tripId: String): Flow<LocationEntity?> = dao.observeLastLocation(tripId)
 
+    /** Puntos en cola sin subir (0 = al día). */
+    fun unsentCount(tripId: String): Flow<Int> = dao.observeUnsentCount(tripId)
+
+    /** Hora del último punto enviado (proxy de "último envío"); null si aún no sube ninguno. */
+    fun lastSentAt(tripId: String): Flow<Long?> = dao.observeLastSentAt(tripId)
+
     /** Persiste el viaje recién creado y abre M3. El snapshot de geocerca viene del destino elegido. */
     suspend fun startTrip(
         trip: TripResult,
@@ -65,8 +71,9 @@ class TripRepository(context: Context) {
         dao.setPendingClose(UUID.randomUUID().toString(), System.currentTimeMillis(), observations)
     }
 
-    /** El backend confirmó el cierre → estado local CONCLUIDO + motivo (la app pasa a M5). */
-    suspend fun markConcluded(closureType: String?) = dao.markConcluded(closureType)
+    /** El backend confirmó el cierre → estado local CONCLUIDO + motivo + hora de cierre (la app pasa a M5). */
+    suspend fun markConcluded(closureType: String?) =
+        dao.markConcluded(closureType, System.currentTimeMillis())
 
     /** Olvida el viaje localmente (M5 → "Iniciar nuevo viaje" vuelve a M2). */
     suspend fun endTrip() = dao.clearActiveTrip()

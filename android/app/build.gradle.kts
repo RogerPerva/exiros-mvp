@@ -22,6 +22,11 @@ android {
             // 10.0.2.2 = host de la máquina anfitriona visto desde el emulador Android.
             buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:3000\"")
             buildConfigField("String", "APP_KEY", "\"dev-app-key-cambia-en-prod\"")
+            // Ayudas de desarrollo (prefill del formulario, foto de muestra, botones de prueba).
+            // APAGADAS por defecto para que la demo se vea como producción; reactívalas con
+            // `-PEXIROS_DEV_AIDS=true` al ensamblar el debug.
+            val devAids = (project.findProperty("EXIROS_DEV_AIDS") as String?)?.toBoolean() ?: false
+            buildConfigField("Boolean", "DEV_AIDS", "$devAids")
         }
         release {
             isMinifyEnabled = false
@@ -33,6 +38,8 @@ android {
                 ?: "dev-app-key-cambia-en-prod"
             buildConfigField("String", "API_BASE_URL", "\"$apiUrl\"")
             buildConfigField("String", "APP_KEY", "\"$appKey\"")
+            // Las ayudas de desarrollo nunca existen en producción.
+            buildConfigField("Boolean", "DEV_AIDS", "false")
         }
     }
 

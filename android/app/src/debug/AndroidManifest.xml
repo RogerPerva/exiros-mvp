@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Solo en debug: permitir HTTP en claro hacia el backend local (http://10.0.2.2:3000).
+         En release el tráfico va por HTTPS y el tráfico en claro queda deshabilitado por
+         defecto (Android 9+), sin tocar el manifiesto principal. -->
+    <application android:usesCleartextTraffic="true" />
+
+</manifest>

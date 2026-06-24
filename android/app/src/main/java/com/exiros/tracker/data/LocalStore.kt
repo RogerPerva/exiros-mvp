@@ -37,6 +37,8 @@ data class ActiveTripEntity(
     val closeObservations: String? = null,
     /** Motivo del cierre (AUTO_GEOFENCE / MANUAL_OPERATOR / MANUAL_ADMIN); null mientras EN_RUTA. */
     val closureType: String? = null,
+    /** Momento del cierre (ms). Con `createdAt` deriva la duración mostrada en M5; null mientras EN_RUTA. */
+    val closedAt: Long? = null,
     val createdAt: Long,
 ) {
     companion object {
@@ -81,8 +83,11 @@ interface TripDao {
     )
     suspend fun setPendingClose(rid: String, at: Long, obs: String)
 
-    @Query("UPDATE active_trip SET status = 'CONCLUIDO', pendingClose = 0, closureType = :closureType WHERE id = 1")
-    suspend fun markConcluded(closureType: String?)
+    @Query(
+        "UPDATE active_trip SET status = 'CONCLUIDO', pendingClose = 0, " +
+            "closureType = :closureType, closedAt = :closedAt WHERE id = 1",
+    )
+    suspend fun markConcluded(closureType: String?, closedAt: Long)
 
     @Insert
     suspend fun insertLocation(point: LocationEntity)
@@ -93,6 +98,14 @@ interface TripDao {
     @Query("SELECT * FROM location_queue WHERE tripId = :tripId ORDER BY recordedAt DESC, id DESC LIMIT 1")
     fun observeLastLocation(tripId: String): Flow<LocationEntity?>
 
+    // Puntos aún sin subir: 0 = la cola está "al día"; >0 = hay envíos pendientes.
+    @Query("SELECT COUNT(*) FROM location_queue WHERE tripId = :tripId AND sent = 0")
+    fun observeUnsentCount(tripId: String): Flow<Int>
+
+    // Hora del último punto confirmado como enviado (proxy de "último envío"); null si aún no sube ninguno.
+    @Query("SELECT MAX(recordedAt) FROM location_queue WHERE tripId = :tripId AND sent = 1")
+    fun observeLastSentAt(tripId: String): Flow<Long?>
+
     // recordedAt + id: orden estable del lote (y de la ruta) ante empates de timestamp.
     @Query("SELECT * FROM location_queue WHERE tripId = :tripId AND sent = 0 ORDER BY recordedAt ASC, id ASC")
     suspend fun unsentLocations(tripId: String): List<LocationEntity>
@@ -101,7 +114,7 @@ interface TripDao {
     suspend fun markSent(ids: List<Long>)
 }
 
-@Database(entities = [ActiveTripEntity::class, LocationEntity::class], version = 3, exportSchema = false)
+@Database(entities = [ActiveTripEntity::class, LocationEntity::class], version = 4, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun tripDao(): TripDao
 

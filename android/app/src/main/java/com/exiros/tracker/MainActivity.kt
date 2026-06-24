@@ -41,8 +41,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -79,6 +79,7 @@ import com.exiros.tracker.ui.ExirosError
 import com.exiros.tracker.ui.ExirosNavy
 import com.exiros.tracker.ui.ExirosTheme
 import com.exiros.tracker.ui.Success
+import com.exiros.tracker.ui.exirosFieldColors
 import com.exiros.tracker.ui.SurfaceWhite
 import com.exiros.tracker.ui.TextPrimary
 import com.exiros.tracker.ui.TextSecondary
@@ -142,6 +143,7 @@ private fun RootScreen(repo: TripRepository) {
 
     val scope = rememberCoroutineScope()
     var showFinalize by remember { mutableStateOf(false) } // M3 ↔ M4
+    var permisosSkipped by remember { mutableStateOf(false) } // "Ahora no" en M1 → deja pasar a M2
 
     // El servicio sólo rastrea mientras el viaje está EN_RUTA. Al concluir (geocerca o cierre),
     // el estado pasa a CONCLUIDO → se detiene (deja de gastar GPS) y la app muestra M5.
@@ -162,7 +164,12 @@ private fun RootScreen(repo: TripRepository) {
         is TripLoad.Ready -> {
             val active = s.trip
             when {
-                active == null -> TripFormScreen(
+                // M1 (permisos) antes de M2 si aún no se conceden y no se omitió explícitamente.
+                active == null && !hasLocationPermission && !permisosSkipped -> PermisosScreen(
+                    onAllow = { requestLocation() },
+                    onSkip = { permisosSkipped = true },
+                )
+                active == null -> TripFormScreen( // M2
                     onTripStarted = { trip, dest, providerName, folio ->
                         repo.startTrip(trip, dest, providerName, folio)
                         if (!hasLocationPermission) requestLocation()
@@ -238,12 +245,7 @@ private fun LabeledField(
             singleLine = true,
             shape = fieldShape,
             modifier = Modifier.fillMaxWidth(),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = SurfaceWhite,
-                unfocusedContainerColor = SurfaceWhite,
-                focusedBorderColor = ExirosBlue,
-                unfocusedBorderColor = BorderGray,
-            ),
+            colors = exirosFieldColors(),
             keyboardOptions = if (capitalize) {
                 KeyboardOptions(capitalization = KeyboardCapitalization.Characters)
             } else {
@@ -263,10 +265,10 @@ fun TripFormScreen(
     val api = remember { ApiClient() }
     val deviceId = remember { DeviceId.get(context) }
 
-    var providerNumber by remember { mutableStateOf(if (BuildConfig.DEBUG) "48213" else "") }
-    var providerName by remember { mutableStateOf(if (BuildConfig.DEBUG) "Transporte del Norte SA de CV" else "") }
-    var folio by remember { mutableStateOf(if (BuildConfig.DEBUG) "100294" else "") }
-    var frontPlate by remember { mutableStateOf(if (BuildConfig.DEBUG) "ABC-12-34" else "") }
+    var providerNumber by remember { mutableStateOf(if (BuildConfig.DEV_AIDS) "48213" else "") }
+    var providerName by remember { mutableStateOf(if (BuildConfig.DEV_AIDS) "Transporte del Norte SA de CV" else "") }
+    var folio by remember { mutableStateOf(if (BuildConfig.DEV_AIDS) "100294" else "") }
+    var frontPlate by remember { mutableStateOf(if (BuildConfig.DEV_AIDS) "ABC-12-34" else "") }
     var rearPlate by remember { mutableStateOf("") }
 
     var destinations by remember { mutableStateOf<List<Destination>>(emptyList()) }
@@ -296,10 +298,10 @@ fun TripFormScreen(
         runCatching { api.fetchDestinations() }
             .onSuccess { list ->
                 destinations = list
-                if (BuildConfig.DEBUG) selected = list.firstOrNull()
+                if (BuildConfig.DEV_AIDS) selected = list.firstOrNull()
             }
             .onFailure { message = "No se pudieron cargar destinos: ${it.message}"; isError = true }
-        if (BuildConfig.DEBUG && photoBytes == null) {
+        if (BuildConfig.DEV_AIDS && photoBytes == null) {
             runCatching {
                 context.resources.openRawResource(R.raw.sample_truck).use { it.readBytes() }
             }.onSuccess { photoBytes = it; photoMime = "image/jpeg"; photoName = "carga_48213.jpg" }
@@ -374,13 +376,8 @@ fun TripFormScreen(
                     trailingIcon = {
                         ExposedDropdownMenuDefaults.TrailingIcon(expanded = dropdownOpen)
                     },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = SurfaceWhite,
-                        unfocusedContainerColor = SurfaceWhite,
-                        focusedBorderColor = ExirosBlue,
-                        unfocusedBorderColor = BorderGray,
-                    ),
-                    modifier = Modifier.menuAnchor().fillMaxWidth(),
+                    colors = exirosFieldColors(),
+                    modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
                 )
                 ExposedDropdownMenu(
                     expanded = dropdownOpen,

@@ -2,6 +2,8 @@ package com.exiros.tracker.ui
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.TextFieldColors
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
@@ -17,6 +19,7 @@ val SurfaceWhite = Color(0xFFFFFFFF)
 val TextPrimary = Color(0xFF111827)
 val TextSecondary = Color(0xFF7A828F)
 val Success = Color(0xFF16A34A)
+val Warning = Color(0xFFD97706)
 val ExirosError = Color(0xFFDC2626)
 
 private val ExirosColors = lightColorScheme(
@@ -31,6 +34,15 @@ private val ExirosColors = lightColorScheme(
     outline = BorderGray,
     error = ExirosError,
     onError = Color.White,
+)
+
+/** Colores compartidos de los campos de texto (fondo blanco + borde azul al enfocar). */
+@Composable
+fun exirosFieldColors(): TextFieldColors = OutlinedTextFieldDefaults.colors(
+    focusedContainerColor = SurfaceWhite,
+    unfocusedContainerColor = SurfaceWhite,
+    focusedBorderColor = ExirosBlue,
+    unfocusedBorderColor = BorderGray,
 )
 
 /** Tema corporativo Exiros. Roboto es la fuente del sistema Android (no requiere setup). */

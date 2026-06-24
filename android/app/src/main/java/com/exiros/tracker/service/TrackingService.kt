@@ -167,21 +167,19 @@ class TrackingService : Service() {
     }
 
     private fun createChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                getString(R.string.tracking_channel),
-                NotificationManager.IMPORTANCE_LOW,
-            )
-            val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            nm.createNotificationChannel(channel)
-        }
+        // minSdk 26 → el canal de notificación siempre aplica (sin guarda de versión).
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            getString(R.string.tracking_channel),
+            NotificationManager.IMPORTANCE_LOW,
+        )
+        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        nm.createNotificationChannel(channel)
     }
 
     companion object {
         private const val CHANNEL_ID = "tracking"
         private const val NOTIF_ID = 1
-        private const val DEBUG_SYNC_MS = 30_000L // solo debug: sube cada 30 s en pruebas
         private const val ARRIVAL_MARGIN_M = 100f // margen sobre el radio para anticipar llegada
 
         const val ACTION_START = "com.exiros.tracker.START"
