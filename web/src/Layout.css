@@ -6,9 +6,9 @@
   background: #f8fafc;
   transition: grid-template-columns 0.18s ease;
 }
-/* Colapsado: el sidebar se oculta para ganar ancho de pantalla. */
+/* Colapsado: el sidebar se reduce a un rail de solo iconos. */
 .shell--collapsed {
-  grid-template-columns: 0 1fr;
+  grid-template-columns: 72px 1fr;
 }
 
 /* --- Sidebar navy --- */
@@ -21,16 +21,48 @@
   overflow: hidden;
   white-space: nowrap;
 }
+.shell--collapsed .shell-sidebar {
+  padding: 1.5rem 0.6rem;
+}
 
+/* Cabecera del sidebar: logo + botón de colapsar. */
+.shell-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 2.5rem;
+}
+.shell--collapsed .shell-top {
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
 .shell-logo {
   font-size: 1.6rem;
   font-weight: 800;
   color: #fff;
   letter-spacing: -0.5px;
-  padding: 0 0.6rem;
-  margin-bottom: 2.5rem;
+  padding: 0 0.4rem;
 }
 .shell-logo span {
+  color: #fff;
+}
+.shell-collapse {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+}
+.shell-collapse:hover {
+  background: rgba(255, 255, 255, 0.08);
   color: #fff;
 }
 
@@ -62,6 +94,20 @@
 }
 .shell-navicon {
   font-size: 1rem;
+  flex-shrink: 0;
+}
+
+/* Colapsado: ocultar etiquetas y centrar los iconos. */
+.shell--collapsed .shell-label {
+  display: none;
+}
+.shell--collapsed .shell-navitem {
+  justify-content: center;
+  padding: 0.7rem 0;
+}
+.shell--collapsed .shell-logout {
+  justify-content: center;
+  padding: 0.7rem 0;
 }
 
 .shell-logout {
@@ -95,24 +141,8 @@
   border-bottom: 1px solid #e2e8f0;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   padding: 0 1.5rem;
-}
-.shell-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 38px;
-  height: 38px;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  background: #fff;
-  color: #475569;
-  cursor: pointer;
-}
-.shell-toggle:hover {
-  background: #f1f5f9;
-  color: #0f172a;
 }
 
 .shell-user {

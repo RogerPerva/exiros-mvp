@@ -35,42 +35,49 @@ export default function Layout() {
   return (
     <div className={`shell${collapsed ? ' shell--collapsed' : ''}`}>
       <aside className="shell-sidebar">
-        <div className="shell-logo">
-          ex<span>iros</span>
+        <div className="shell-top">
+          <div className="shell-logo">
+            {collapsed ? 'e' : <>ex<span>iros</span></>}
+          </div>
+          <button
+            className="shell-collapse"
+            onClick={toggleSidebar}
+            title={collapsed ? 'Expandir menú' : 'Colapsar menú'}
+            aria-label={collapsed ? 'Expandir menú' : 'Colapsar menú'}
+          >
+            <PanelLeft size={18} />
+          </button>
         </div>
         <nav className="shell-nav">
-          <NavLink to="/mapa" className="shell-navitem">
-            <Map className="shell-navicon" size={18} /> Mapa
+          <NavLink to="/mapa" className="shell-navitem" title="Mapa">
+            <Map className="shell-navicon" size={18} />
+            <span className="shell-label">Mapa</span>
           </NavLink>
-          <NavLink to="/viajes" className="shell-navitem">
-            <Truck className="shell-navicon" size={18} /> Viajes
+          <NavLink to="/viajes" className="shell-navitem" title="Viajes">
+            <Truck className="shell-navicon" size={18} />
+            <span className="shell-label">Viajes</span>
           </NavLink>
           {isAdmin && (
-            <NavLink to="/destinos" className="shell-navitem">
-              <MapPin className="shell-navicon" size={18} /> Destinos
+            <NavLink to="/destinos" className="shell-navitem" title="Destinos">
+              <MapPin className="shell-navicon" size={18} />
+              <span className="shell-label">Destinos</span>
             </NavLink>
           )}
           {isAdmin && (
-            <NavLink to="/usuarios" className="shell-navitem">
-              <Users className="shell-navicon" size={18} /> Usuarios
+            <NavLink to="/usuarios" className="shell-navitem" title="Usuarios">
+              <Users className="shell-navicon" size={18} />
+              <span className="shell-label">Usuarios</span>
             </NavLink>
           )}
         </nav>
-        <button className="shell-logout" onClick={logout}>
-          <LogOut size={16} /> Cerrar sesión
+        <button className="shell-logout" onClick={logout} title="Cerrar sesión">
+          <LogOut size={16} />
+          <span className="shell-label">Cerrar sesión</span>
         </button>
       </aside>
 
       <div className="shell-body">
         <header className="shell-header">
-          <button
-            className="shell-toggle"
-            onClick={toggleSidebar}
-            title={collapsed ? 'Mostrar menú' : 'Ocultar menú'}
-            aria-label={collapsed ? 'Mostrar menú' : 'Ocultar menú'}
-          >
-            <PanelLeft size={20} />
-          </button>
           <div className="shell-user">
             <span className="shell-avatar">{initials}</span>
             <span className="shell-userinfo">
