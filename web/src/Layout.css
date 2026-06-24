@@ -4,6 +4,11 @@
   min-height: 100vh;
   font-family: 'Inter', system-ui, sans-serif;
   background: #f8fafc;
+  transition: grid-template-columns 0.18s ease;
+}
+/* Colapsado: el sidebar se oculta para ganar ancho de pantalla. */
+.shell--collapsed {
+  grid-template-columns: 0 1fr;
 }
 
 /* --- Sidebar navy --- */
@@ -13,6 +18,8 @@
   display: flex;
   flex-direction: column;
   padding: 1.5rem 1rem;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .shell-logo {
@@ -88,8 +95,24 @@
   border-bottom: 1px solid #e2e8f0;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   padding: 0 1.5rem;
+}
+.shell-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+  color: #475569;
+  cursor: pointer;
+}
+.shell-toggle:hover {
+  background: #f1f5f9;
+  color: #0f172a;
 }
 
 .shell-user {
