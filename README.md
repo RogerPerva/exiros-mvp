@@ -85,6 +85,82 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 ---
 
+## 🪟 Instalación paso a paso en Windows (PowerShell)
+
+Guía concreta para Windows 11 con **PowerShell** (los comandos de la sección anterior asumen `bash`). Los pasos `.sh` del guion de demo siguen necesitando **Git Bash**; el resto corre tal cual aquí. Validado el 2026-06-24.
+
+**Requisitos:** Docker Desktop · Node 20+ · (para móvil) JDK 21 + Android SDK con un AVD.
+
+### Antes de empezar: enciende Docker Desktop
+
+Si `docker compose` falla con `open //./pipe/dockerDesktopLinuxEngine: The system cannot find the file specified`, **el motor de Docker está apagado**: abre **Docker Desktop** y espera a que el ícono de la ballena en la bandeja deje de animarse (~1 min). Verifica con:
+
+```powershell
+docker info --format '{{.ServerVersion}}'   # imprime la versión si el motor está listo
+```
+
+### Primera vez (instalación completa)
+
+```powershell
+# 0) Dependencias
+cd C:\ruta\a\exiros-mvp
+cd backend; npm install; cd ..
+cd web; npm install; cd ..
+
+# 1) Base de datos (Postgres en Docker)
+docker compose -f infra/docker-compose.yml up -d
+
+# 2) Backend: configurar y preparar la BD
+cd backend
+copy .env.example .env          # define los secretos (el backend NO arranca si falta alguno)
+npx prisma migrate deploy       # aplica el esquema
+npx prisma generate             # ⚠️ OBLIGATORIO antes del seed, o falla con "has no exported member 'Role'"
+npx prisma db seed              # crea el admin (idempotente)
+npx ts-node prisma/seed-demo.ts # opcional: rellena 6 viajes de demo para la presentación
+npm run build                   # compila a dist/
+```
+
+### Arranque diario (3 terminales independientes)
+
+Con la ballena de Docker activa:
+
+```powershell
+# Terminal 1 — Base de datos (idempotente; si ya corre, no estorba)
+docker compose -f infra/docker-compose.yml up -d
+
+# Terminal 2 — Backend (:3000) — dejar abierta
+cd backend
+npm run start:dev               # recarga sola al editar; alternativa README: node dist/main.js
+
+# Terminal 3 — Web (:5173) — dejar abierta
+cd web
+npm run dev
+```
+
+Abre **http://localhost:5173** → login **`admin@exiros.com` / `admin1234`**.
+
+- Ruta real del login en la API: `POST /api/web/auth/login` (por si pruebas el backend a mano).
+- **Apagar:** `Ctrl + C` en las terminales 2 y 3; Postgres con `docker compose -f infra/docker-compose.yml down`.
+
+### App móvil — Android en Windows
+
+```powershell
+$env:ANDROID_HOME = "$env:LOCALAPPDATA\Android\Sdk"
+$env:Path = "$env:ANDROID_HOME\emulator;$env:ANDROID_HOME\platform-tools;$env:Path"
+
+emulator -list-avds                                    # ver AVDs
+emulator -avd <tu-AVD> -no-snapshot-save               # arrancar el emulador
+
+cd android
+$env:JAVA_HOME = "C:\Program Files\Java\jdk-21"        # ruta de tu JDK 21
+.\gradlew assembleDebug
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+```
+
+> El build *debug* alcanza el backend del host en `http://10.0.2.2:3000` (ya configurado). Si en el primer boot el emulador muestra "Process system isn't responding", da **Wait** (es el sistema asentándose, no la app).
+
+---
+
 ## 🎬 Guion de demo (cierre automático por geocerca)
 
 Con el sistema arriba y un destino activo (p. ej. *Patio Comprador Monterrey*, centro `25.6866,-100.3161`, radio 300 m, creado desde el portal → Destinos):
