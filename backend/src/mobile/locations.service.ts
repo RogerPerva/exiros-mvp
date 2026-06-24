@@ -114,7 +114,8 @@ export class LocationsService {
   private async evaluateGeofence(trip: Trip): Promise<boolean> {
     const recent = await this.prisma.location.findMany({
       where: { tripId: trip.id, accuracyMeters: { lte: ACCURACY_ELIGIBLE_M } },
-      orderBy: { recordedAt: 'desc' },
+      // recordedAt + id: selección determinística de los 2 más recientes ante empates.
+      orderBy: [{ recordedAt: 'desc' }, { id: 'desc' }],
       take: 2,
       select: { lat: true, lng: true },
     });

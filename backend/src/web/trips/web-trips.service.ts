@@ -32,7 +32,8 @@ export class WebTripsService {
           },
         },
         locations: {
-          orderBy: { recordedAt: 'asc' },
+          // recordedAt + id: orden estable de la polilínea ante empates de timestamp.
+          orderBy: [{ recordedAt: 'asc' }, { id: 'asc' }],
           select: { lat: true, lng: true, recordedAt: true },
         },
       },

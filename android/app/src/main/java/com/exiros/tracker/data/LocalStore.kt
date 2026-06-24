@@ -90,10 +90,11 @@ interface TripDao {
     @Query("SELECT COUNT(*) FROM location_queue WHERE tripId = :tripId")
     fun observeLocationCount(tripId: String): Flow<Int>
 
-    @Query("SELECT * FROM location_queue WHERE tripId = :tripId ORDER BY recordedAt DESC LIMIT 1")
+    @Query("SELECT * FROM location_queue WHERE tripId = :tripId ORDER BY recordedAt DESC, id DESC LIMIT 1")
     fun observeLastLocation(tripId: String): Flow<LocationEntity?>
 
-    @Query("SELECT * FROM location_queue WHERE tripId = :tripId AND sent = 0 ORDER BY recordedAt ASC")
+    // recordedAt + id: orden estable del lote (y de la ruta) ante empates de timestamp.
+    @Query("SELECT * FROM location_queue WHERE tripId = :tripId AND sent = 0 ORDER BY recordedAt ASC, id ASC")
     suspend fun unsentLocations(tripId: String): List<LocationEntity>
 
     @Query("UPDATE location_queue SET sent = 1 WHERE id IN (:ids)")
