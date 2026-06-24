@@ -17,6 +17,7 @@ permissions:
   contents: write        # crear ramas y commits para abrir el PR de propuestas
   pull-requests: write   # abrir/actualizar PRs y comentar en ellos
   issues: write          # responder dentro de las Issues
+  id-token: write        # requerido por anthropics/claude-code-action para OIDC
 
 jobs:
   claude:
