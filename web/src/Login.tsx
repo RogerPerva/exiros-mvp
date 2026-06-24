@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { KeyRound, X } from 'lucide-react';
 import { login, type AuthUser } from './api';
 import logo from './assets/exiros-logo.png';
 import hero from './assets/oficina-exiros.jpg';
@@ -10,6 +11,7 @@ export default function Login({ onLogin }: { onLogin: (user: AuthUser) => void }
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -56,6 +58,14 @@ export default function Login({ onLogin }: { onLogin: (user: AuthUser) => void }
             required
           />
 
+          <button
+            type="button"
+            className="login-forgot"
+            onClick={() => setShowForgot(true)}
+          >
+            ¿Olvidaste tu contraseña?
+          </button>
+
           {error && <p className="login-error">{error}</p>}
 
           <button type="submit" disabled={busy}>
@@ -72,6 +82,28 @@ export default function Login({ onLogin }: { onLogin: (user: AuthUser) => void }
           <p>Monitorea en tiempo real tus viajes para una logística más eficiente.</p>
         </div>
       </aside>
+
+      {showForgot && (
+        <div className="lf-overlay" onClick={() => setShowForgot(false)}>
+          <div className="lf-modal" onClick={(e) => e.stopPropagation()}>
+            <button
+              className="lf-close"
+              onClick={() => setShowForgot(false)}
+              aria-label="Cerrar"
+            >
+              <X size={18} />
+            </button>
+            <span className="lf-icon">
+              <KeyRound size={22} />
+            </span>
+            <h3>Restablecer contraseña</h3>
+            <p>Contacta con tu administrador para restablecer tu contraseña.</p>
+            <button className="lf-ok" onClick={() => setShowForgot(false)}>
+              Entendido
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
