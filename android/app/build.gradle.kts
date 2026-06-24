@@ -25,8 +25,14 @@ android {
         }
         release {
             isMinifyEnabled = false
-            buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:3000\"")
-            buildConfigField("String", "APP_KEY", "\"dev-app-key-cambia-en-prod\"")
+            // Config de producción por -P (gradle.properties / línea de comandos). Sin override
+            // quedan los placeholders dev; el guard de abajo impide ensamblar un release con ellos.
+            val apiUrl = (project.findProperty("EXIROS_API_URL") as String?)
+                ?: "http://10.0.2.2:3000"
+            val appKey = (project.findProperty("EXIROS_APP_KEY") as String?)
+                ?: "dev-app-key-cambia-en-prod"
+            buildConfigField("String", "API_BASE_URL", "\"$apiUrl\"")
+            buildConfigField("String", "APP_KEY", "\"$appKey\"")
         }
     }
 
@@ -40,6 +46,24 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+}
+
+// Falla el build release si quedaron los placeholders de desarrollo (evita publicar un APK
+// apuntando al emulador con la app-key de dev). El build debug no se ve afectado.
+gradle.taskGraph.whenReady {
+    val releasing = allTasks.any { it.name == "assembleRelease" || it.name == "bundleRelease" }
+    if (releasing) {
+        val apiUrl = project.findProperty("EXIROS_API_URL") as String?
+        val appKey = project.findProperty("EXIROS_APP_KEY") as String?
+        if (apiUrl == null || appKey == null ||
+            apiUrl.contains("10.0.2.2") || appKey.contains("cambia-en-prod")
+        ) {
+            throw GradleException(
+                "Build release con configuración dev. Define -PEXIROS_API_URL=<url> y " +
+                    "-PEXIROS_APP_KEY=<key> reales (sin placeholders).",
+            )
+        }
     }
 }
 

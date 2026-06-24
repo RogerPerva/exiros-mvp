@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { X } from 'lucide-react';
 import RouteMap from '../RouteMap';
 import {
   ApiError,
@@ -12,6 +13,7 @@ import {
 import { useAuth } from '../auth-context';
 import './page.css';
 import './detalle.css';
+import './destinos.css'; // reutiliza los estilos de modal (.modal-*)
 
 const CLOSURE_LABEL: Record<ClosureType, string> = {
   AUTO_GEOFENCE: 'Automático por geocerca',
@@ -27,6 +29,9 @@ export default function ViajeDetallePage() {
   const [trip, setTrip] = useState<TripDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [closing, setClosing] = useState(false);
+  const [showClose, setShowClose] = useState(false);
+  const [obs, setObs] = useState('');
+  const [closeErr, setCloseErr] = useState<string | null>(null);
 
   const isAdmin = user?.role === 'ADMIN';
 
@@ -47,15 +52,21 @@ export default function ViajeDetallePage() {
     void load();
   }, [load]);
 
-  async function onForceClose() {
-    const observations = window.prompt('Observación del cierre (obligatoria):')?.trim();
-    if (!observations) return;
+  async function submitClose() {
+    const observations = obs.trim();
+    if (!observations) {
+      setCloseErr('La observación es obligatoria.');
+      return;
+    }
     setClosing(true);
+    setCloseErr(null);
     try {
       await closeTripAdmin(id!, observations);
+      setShowClose(false);
+      setObs('');
       await load();
     } catch (e) {
-      alert(e instanceof ApiError ? e.message : 'No se pudo cerrar el viaje.');
+      setCloseErr(e instanceof ApiError ? e.message : 'No se pudo cerrar el viaje.');
     } finally {
       setClosing(false);
     }
@@ -88,8 +99,8 @@ export default function ViajeDetallePage() {
       <div className="page-head">
         <h1 className="page-title">Viaje #{trip.folio}</h1>
         {isAdmin && trip.status === 'EN_RUTA' && (
-          <button className="btn-danger" onClick={() => void onForceClose()} disabled={closing}>
-            {closing ? 'Cerrando…' : 'Forzar cierre'}
+          <button className="btn-danger" onClick={() => setShowClose(true)}>
+            Forzar cierre
           </button>
         )}
       </div>
@@ -148,6 +159,43 @@ export default function ViajeDetallePage() {
       <button className="detalle-back" onClick={() => navigate('/viajes')}>
         ‹ Volver a Viajes
       </button>
+
+      {showClose && (
+        <div className="modal-overlay" onClick={() => setShowClose(false)}>
+          <div className="modal-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head">
+              <h2>Forzar cierre del viaje</h2>
+              <button className="modal-x" onClick={() => setShowClose(false)}>
+                <X size={18} />
+              </button>
+            </div>
+            <p className="modal-hint">
+              Cerrarás manualmente el viaje #{trip.folio}. La observación es obligatoria.
+            </p>
+            <label className="modal-label">Observaciones</label>
+            <textarea
+              className="modal-input"
+              rows={3}
+              placeholder="Motivo del cierre…"
+              value={obs}
+              onChange={(e) => setObs(e.target.value)}
+            />
+            {closeErr && <p className="modal-error">{closeErr}</p>}
+            <div className="modal-actions">
+              <button className="btn-ghost" onClick={() => setShowClose(false)}>
+                Cancelar
+              </button>
+              <button
+                className="btn-primary"
+                onClick={() => void submitClose()}
+                disabled={closing}
+              >
+                {closing ? 'Cerrando…' : 'Confirmar cierre'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

@@ -27,6 +27,7 @@ export interface Trip {
   endedAt: string | null;
   photoPath: string;
   destination: {
+    id: string;
     name: string;
     centerLat: number;
     centerLng: number;
@@ -268,6 +269,7 @@ export interface ReportFilters {
   status?: TripStatus;
   from?: string; // ISO 8601
   to?: string; // ISO 8601
+  destinationId?: string;
 }
 
 /** Descarga el .xlsx del reporte aplicando filtros y dispara la descarga en el navegador. */
@@ -276,6 +278,7 @@ export async function exportReport(filters: ReportFilters): Promise<void> {
   if (filters.status) qs.set('status', filters.status);
   if (filters.from) qs.set('from', filters.from);
   if (filters.to) qs.set('to', filters.to);
+  if (filters.destinationId) qs.set('destinationId', filters.destinationId);
   const url = `${API_BASE}/api/web/reports/export${qs.toString() ? `?${qs}` : ''}`;
 
   const res = await fetch(url, { headers: authHeaders() });

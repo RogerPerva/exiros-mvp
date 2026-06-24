@@ -25,6 +25,7 @@ export class WebTripsService {
         photoPath: true,
         destination: {
           select: {
+            id: true,
             name: true,
             centerLat: true,
             centerLng: true,
@@ -67,6 +68,7 @@ export class WebTripsService {
         photoPath: true,
         destination: {
           select: {
+            id: true,
             name: true,
             centerLat: true,
             centerLng: true,

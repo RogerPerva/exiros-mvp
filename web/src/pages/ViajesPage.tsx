@@ -26,10 +26,12 @@ export default function ViajesPage() {
   const [exporting, setExporting] = useState(false);
 
   const all = useMemo(() => trips ?? [], [trips]);
-  const destinos = useMemo(
-    () => [...new Set(all.map((t) => t.destination?.name).filter(Boolean))] as string[],
-    [all],
-  );
+  // {id, name} únicos: el filtro/export usan el id (lo que el backend espera), no el nombre.
+  const destinos = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const t of all) if (t.destination) map.set(t.destination.id, t.destination.name);
+    return [...map].map(([id, name]) => ({ id, name }));
+  }, [all]);
 
   const filtered = useMemo(
     () => all.filter((t) => matches(t, { search, estado, destino, from, to })),
@@ -47,6 +49,7 @@ export default function ViajesPage() {
       if (estado) filters.status = estado;
       if (from) filters.from = `${from}T00:00:00`;
       if (to) filters.to = `${to}T23:59:59`;
+      if (destino) filters.destinationId = destino;
       await exportReport(filters);
     } catch {
       alert('No se pudo generar el reporte.');
@@ -99,8 +102,8 @@ export default function ViajesPage() {
         >
           <option value="">Destino: Todos</option>
           {destinos.map((d) => (
-            <option key={d} value={d}>
-              {d}
+            <option key={d.id} value={d.id}>
+              {d.name}
             </option>
           ))}
         </select>
@@ -198,7 +201,7 @@ function matches(
   f: { search: string; estado: '' | TripStatus; destino: string; from: string; to: string },
 ): boolean {
   if (f.estado && t.status !== f.estado) return false;
-  if (f.destino && t.destination?.name !== f.destino) return false;
+  if (f.destino && t.destination?.id !== f.destino) return false;
   if (f.from && t.startedAt < `${f.from}T00:00:00`) return false;
   if (f.to && t.startedAt > `${f.to}T23:59:59`) return false;
   if (f.search) {
