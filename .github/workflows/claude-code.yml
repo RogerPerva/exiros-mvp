@@ -22,9 +22,14 @@ permissions:
 jobs:
   claude:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write        # crear ramas y commits para abrir el PR de propuestas
+      pull-requests: write   # abrir/actualizar PRs y comentar en ellos
+      issues: write          # responder dentro de las Issues
+      id-token: write        # requerido por anthropics/claude-code-action para OIDC
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0   # historial completo: necesario para crear ramas/PR
 
