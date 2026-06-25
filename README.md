@@ -17,6 +17,20 @@ Núcleo del producto: **rastreo en segundo plano con < 10 % de batería por jorn
 **Requisitos:** Docker + Docker Compose · Node 20+ y npm · (para móvil) JDK 21 + Android SDK con un emulador (AVD) o teléfono físico.
 Los comandos asumen una shell `bash`/`zsh` (en Windows usa **WSL** o **Git Bash**).
 
+### ⚡ Vía rápida (Makefile)
+
+Si tienes `make` (incluido en macOS/Linux), levanta todo de cero con un comando:
+
+```bash
+make setup     # instala, levanta Postgres, migra, siembra el admin y compila
+make backend   # corre la API en :3000   (en una terminal)
+make web       # corre el portal en :5173 (en otra terminal)
+```
+
+Otros atajos útiles: `make check` (todos los gates lint+build+test), `make pentest`
+(prueba de seguridad), `make health`, `make db-reset`. Lista completa: **`make help`**.
+El paso a paso manual equivalente está abajo.
+
 ### 0) Clonar e instalar dependencias
 
 ```bash
