@@ -17,6 +17,15 @@
 - [ ] **`TRUST_PROXY_IP=true`** en ese `.env` (o el rate-limit no sirve tras cloudflared).
 - [ ] **`WEB_ORIGIN`** = dominio del portal (CORS en prod).
 - [ ] En el EC2: `npx prisma migrate deploy` + `npx prisma db seed` (crea el admin).
+- [ ] ⚠️ **Crear 1–2 DESTINOS en el portal de prod.** El seed oficial (`seed.ts`) **solo crea el
+      admin, NO destinos** → sin destinos la app NO puede crear viajes (dropdown vacío). Entra al
+      portal (W4 Destinos) y crea al menos uno antes de la demo.
+
+### A-bis. Despliegue del portal web (si lo subes)
+- [ ] **Compilar la web con `VITE_API_URL`** apuntando a la URL del EC2/cloudflared, o el portal
+      desplegado pega a `http://localhost:3000` y falla:
+      `VITE_API_URL=https://tu-url npm run build` (ver `web/.env.example`).
+- [ ] Verificar que **no** se cuele `web/.env.local` (polling de 30s) en el build de prod.
 
 ### B. Compilar el APK final (yo lo hago cuando me des la URL)
 - [ ] Pásame la **URL HTTPS** del túnel → compilo `assembleRelease` con esa URL + el APP_KEY.
