@@ -127,7 +127,7 @@ Estados según doc §6 (columna 11): **solo dos**, `En ruta` y `Concluido`. `Con
 - **RN-07** El reporte Excel tiene **exactamente 13 columnas** (doc §6), en ese orden.
 - **RN-08** Solo Admin gestiona destinos y usuarios; Monitorista puede monitorear y forzar cierre.
 - **RN-09** El `Destino` del formulario se elige de un catálogo administrado en web (no texto libre).
-- **RN-10** Ingesta protegida con token de dispositivo (pendiente H5) — la app no autentica usuario pero sí identifica origen.
+- **RN-10** Ingesta protegida con **tripToken** (bearer por viaje+dispositivo, hasheado en BD) — la app no autentica usuario pero sí identifica origen. Implementado y verificado.
 - **RN-11** **Un solo viaje activo por dispositivo** (S-01): no se puede iniciar un viaje nuevo mientras exista uno En ruta en ese dispositivo.
 - **RN-12** El **intervalo de envío de lotes es configurable** (S-07): default 15–20 min. El límite no es técnico (podría ser 1 min) sino **cuidar batería y datos móviles**. Si la optimización de energía lo permite, puede reducirse. Tratar como parámetro, no como constante.
 - **RN-13** **Interacción mínima en la app móvil.** Todo el catálogo (destinos/geocercas) se crea y administra **solo desde el portal web** (Admin). La app móvil **no crea ni edita** datos de catálogo: únicamente **consume** las opciones existentes en el dropdown. Toda pantalla/acción que no sea estrictamente necesaria para iniciar/cerrar un viaje queda fuera de la app.

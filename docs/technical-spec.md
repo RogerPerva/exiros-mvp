@@ -80,13 +80,15 @@ Flujo de una petición: **Controller → Service → Repository → Prisma → D
 
 | Capa NestJS | Qué hace | Dónde |
 | :-- | :-- | :-- |
-| HTTPS / túnel | Cifrado en tránsito | Infra |
-| **Guard** (`JwtGuard` / `TripTokenGuard`) | Autentica por espacio de ruta | global por controller |
-| **Rate-limit** (por token/IP) | Frena abuso de ingesta | interceptor/middleware |
+| HTTPS (cloudflared / EC2) | Cifrado en tránsito | Infra (ADR-009) |
+| **Guard** (`JwtGuard` / `TripTokenGuard` / `AppKeyGuard`) | Autentica por espacio de ruta | global por controller |
+| **Rate-limit** (`ProxyThrottlerGuard`, 100/min IP; login 10/min) | Frena abuso/fuerza bruta | `APP_GUARD` global |
 | **ValidationPipe** (whitelist + forbidNonWhitelisted) | Rechaza campos extra y tipos inválidos | global |
 | Tope de body / GZIP | Limita `413` payloads enormes | config |
 | **Exception Filter** | Formato de error único, no fuga de stack traces | global |
 | Log de rechazos | Auditoría de intentos | interceptor |
+
+**Endurecimiento 2026-06-25 (auditoría de ciberseguridad, ver `MEJORAS.md §2.C`):** `AppKeyGuard` con comparación **en tiempo constante** (`timingSafeEqual`); **login `@Throttle(10/min)`** anti fuerza-bruta; la **foto** se guarda con extensión derivada del **MIME validado** (no del `originalname` → no se puede alojar `.html` en el dominio); **`ProxyThrottlerGuard`** rastrea por la **IP real** (`CF-Connecting-IP`) cuando `TRUST_PROXY_IP=true` (sin esto, tras cloudflared `req.ip` es `127.0.0.1` para todos). El `tripToken` se guarda **hasheado** (sha256) y la ingesta valida que el `:id` de la URL == viaje del token (anti-IDOR). Evidencia en vivo: `scripts/pentest.sh` (17/17).
 
 **Validaciones de ingesta** (functional/api spec): lat/lng en rango, timestamp **no futuro**, `accuracyMeters` positivo, bbox MX de cordura, `batchId` idempotente. **NO** se rechazan coords "fuera de geocerca" (toda la ruta está fuera; la geocerca es solo el destino). El lote completo alimenta la ruta; tras persistirlo, el cierre consulta sólo hasta los dos puntos elegibles más recientes por `recordedAt`.
 
@@ -161,7 +163,8 @@ La app recibe el snapshot de geocerca al crear el viaje y ejecuta la misma haver
 - **Config tipada:** módulo `config` lee `.env` (nunca versionado; `.env.example` sí).
 - **Docker (ADR-008):** `infra/docker-compose.yml` solo para **Postgres local** (`docker compose up` → DB en un comando). El backend puede correr en host o contenedor.
 - **Entornos:** solo **local** y **demo** (no hay staging). Una URL de API por entorno.
-- **Despliegue (ADR-009, pend. Julio):** dev = backend local + túnel (cloudflared) para el teléfono; demo = Railway/Render gratis. Web = build estático servido por el backend o Vercel/Netlify.
+- **Despliegue (ADR-009, 2026-06-25):** dev = backend local + túnel cloudflared para el teléfono; demo = **AWS EC2 (free tier) + RDS PostgreSQL + cloudflared en el EC2** (URL HTTPS). Web = build Vite con `VITE_API_URL` a la URL del EC2. En el EC2: `TRUST_PROXY_IP=true` (rate-limit por IP real) y `WEB_ORIGIN` (CORS).
+- **Sonda de salud:** `GET /api/health` (readiness con `SELECT 1`), público y exento del rate-limit — para monitor/auditor/cloudflared.
 - **Fotos:** disco/volumen local (MVP); S3/R2 es post-MVP.
 
 ---
@@ -196,7 +199,7 @@ La app recibe el snapshot de geocerca al crear el viaje y ejecuta la misma haver
 | Prisma | ADR-006 |
 | JWT web + tripToken móvil + defensa en capas | ADR-007 |
 | Docker solo Postgres | ADR-008 |
-| Túnel + Railway | ADR-009 |
+| AWS EC2 + RDS + cloudflared | ADR-009 |
 | Jest + Supertest | ADR-010 |
 | Geocerca haversine sin PostGIS | ADR-012 |
 | Entidades / índices / RN-11 | `database-spec.md` |

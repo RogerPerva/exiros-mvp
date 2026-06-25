@@ -27,7 +27,9 @@
 | `/api/mobile/*` ingesta y cierre | App, viaje ya creado | **tripToken** en `Authorization: Bearer <tripToken>`. |
 | `/api/mobile/*` **bootstrap** (leer destinos, crear viaje) | App, aún sin token | **`X-App-Key`** (clave estática de la app) + rate-limit. |
 
-> **Debilidad honesta del bootstrap:** `X-App-Key` viaja embebida en el APK → es **extraíble** por un atacante decidido. Eleva la barrera frente a scripts triviales, no frente a un atacante serio. La defensa fuerte (Play Integrity / device attestation) es **upgrade path post-MVP** (ADR-007). Las capas que sí aguantan en MVP: rate-limit por IP (Cloudflare), validación estricta y que el `tripToken` (lo que de verdad importa: la ingesta) sí está bien protegido.
+> **Debilidad honesta del bootstrap:** `X-App-Key` viaja embebida en el APK → es **extraíble** por un atacante decidido. Eleva la barrera frente a scripts triviales, no frente a un atacante serio (su comparación es en tiempo constante, pero la clave es extraíble). La defensa fuerte (Play Integrity / device attestation) es **upgrade path post-MVP** (ADR-007). Las capas que sí aguantan en MVP: **rate-limit por IP real** (`ProxyThrottlerGuard`, `TRUST_PROXY_IP=true` tras cloudflared), validación estricta y que el `tripToken` (lo que de verdad importa: la ingesta) está bien protegido (hasheado en BD + anti-IDOR). Lo peor que logra un atacante con la app-key es crear viajes basura, acotado por rate-limit y validación.
+
+> **Sonda de salud:** `GET /api/health` — público y exento del rate-limit. Hace `SELECT 1` y responde `{ status, db, uptime }` (`db:"up"` si la base responde). Para monitor / auditor / cloudflared.
 
 ### 2.1 Por qué DOS espacios separados (web vs móvil)
 No es duplicación gratuita: es un **borde de seguridad**. Un mismo recurso (ej. destinos) se expone por **dos puertas con candados distintos** — `GET /api/web/destinations` (JWT, staff) y `GET /api/mobile/destinations` (X-App-Key, app pública). Beneficios: (1) **auth y rate-limit distintos** por tipo de cliente (confiable vs hostil); (2) menor **superficie de ataque** (el mundo móvil nunca ve gestión de usuarios); (3) **auditoría** separada del tráfico.

@@ -1,6 +1,6 @@
 # ADR-012 — Detección de geocerca
 
-- **Estado:** ✅ Aceptado (pendiente confirmar) (2026-06-17)
+- **Estado:** ✅ Aceptado (2026-06-17; implementado y verificado e2e — cierre AUTO_GEOFENCE por haversine)
 - **Decide:** cómo se determina que un punto llegó al destino (cierre automático).
 - **Origen:** los seniors pidieron evaluar **tipos de dato espaciales** (Spatial Data Types / PostGIS).
 
