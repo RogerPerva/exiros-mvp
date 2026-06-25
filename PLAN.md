@@ -322,9 +322,9 @@ Cada una con: contexto, decisión, alternativas, consecuencias +/−, riesgos, e
 | ADR-004 | **Stack Android** | Kotlin nativo vs Flutter/RN+plugin (D1) | ✅ Aceptado (Kotlin nativo + Plan B) |
 | ADR-005 | Base de datos | **PostgreSQL** | ✅ Aceptado |
 | ADR-006 | ORM / acceso a datos | **Prisma** (independiente del motor) | ✅ Aceptado |
-| ADR-007 | Autenticación | JWT web; token de dispositivo en ingesta (H5) | ✅ Aceptado (JWT web + tripToken móvil) |
+| ADR-007 | Autenticación | JWT web; tripToken en ingesta | ✅ Aceptado (JWT web + tripToken móvil; hardening 2026-06-25) |
 | ADR-008 | Docker | Solo Postgres local; no obligatorio | ✅ Aceptado |
-| ADR-009 | **Despliegue** | Túnel en dev + Railway/Render en demo (D2) | ✅ Aceptado (default, pend. Julio) |
+| ADR-009 | **Despliegue** | Túnel en dev + AWS EC2+RDS+cloudflared en demo (D2) | ✅ Aceptado (revisado 2026-06-25) |
 | ADR-010 | Estrategia de pruebas | Jest unit + e2e API; manuales en teléfono real | ✅ Aceptado |
 | ~~ADR-011~~ | ~~Uso de IA~~ | **MOVIDO:** no es ADR del proyecto. Cómo usamos IA es **metodología interna** (`~/.agents/METODOLOGIA.md` + `CONTEXT-AI.md`), no un entregable ni integración visible para el cliente/auditoría del producto. | ❌ No aplica como ADR |
 | ADR-012 | Geocerca | **Haversine en service, sin PostGIS** (spatial = upgrade path) | ✅ Aceptado (pend. confirmar) |
