@@ -27,9 +27,34 @@ tags:
     description: Monitoreo, detalle, cierre forzado y reporte de viajes
   - name: Mobile
     description: Endpoints de la app del operador (bootstrap, ingesta, cierre)
+  - name: System
+    description: Sonda de salud (monitor / auditor / cloudflared)
 
 # ---------------------------------------------------------------------------
 paths:
+  # ============================ System ============================
+  /health:
+    get:
+      tags: [System]
+      operationId: health
+      summary: Sonda de salud (readiness con ping a la DB)
+      description: >
+        Público y exento del rate-limit. Hace un `SELECT 1`: `db:"up"` si la base
+        responde. Pensado para monitor/auditor/cloudflared en el EC2.
+      security: []   # público
+      responses:
+        '200':
+          description: Servicio vivo (revisar `db` para readiness)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, db, uptime]
+                properties:
+                  status: { type: string, enum: [ok, degraded], example: ok }
+                  db: { type: string, enum: [up, down], example: up }
+                  uptime: { type: number, description: Segundos desde el arranque, example: 1234.5 }
+
   # ============================ WEB · Auth ============================
   /web/auth/login:
     post:
