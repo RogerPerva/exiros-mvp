@@ -1,0 +1,29 @@
+{
+  "name": "exiros-mvp",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Atajos multiplataforma (Windows/mac/Linux) para levantar y probar Exiros. El detalle paso a paso vive en README.md. Lista de comandos: `npm run`.",
+  "scripts": {
+    "setup": "npm run install:all && npm run env && npm run db:up && npm run migrate && npm run seed && npm run build",
+    "install:all": "npm run install:backend && npm run install:web",
+    "install:backend": "cd backend && npm install",
+    "install:web": "cd web && npm install",
+    "env": "node -e \"const fs=require('fs');fs.existsSync('backend/.env')||fs.copyFileSync('backend/.env.example','backend/.env');console.log('backend/.env listo (revisa los secretos)')\"",
+    "db:up": "docker compose -f infra/docker-compose.yml up -d --wait",
+    "db:down": "docker compose -f infra/docker-compose.yml down",
+    "db:reset": "docker compose -f infra/docker-compose.yml down -v && docker compose -f infra/docker-compose.yml up -d --wait",
+    "migrate": "cd backend && npx prisma generate && npx prisma migrate deploy",
+    "seed": "cd backend && npx prisma db seed",
+    "build": "npm run build:backend && npm run build:web",
+    "build:backend": "cd backend && npm run build",
+    "build:web": "cd web && npm run build",
+    "backend": "cd backend && npm run start:prod",
+    "web": "cd web && npm run dev",
+    "lint": "npm run lint:backend && npm run lint:web",
+    "lint:backend": "cd backend && npm run lint",
+    "lint:web": "cd web && npm run lint",
+    "test": "cd backend && npm test && npm run test:e2e",
+    "check": "npm run lint && npm run build && npm run test",
+    "health": "node -e \"fetch('http://localhost:3000/api/health').then(r=>r.text()).then(console.log).catch(()=>console.log('sin backend en :3000'))\""
+  }
+}
