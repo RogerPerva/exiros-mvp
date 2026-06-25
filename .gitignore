@@ -25,6 +25,11 @@ android/.cxx/
 *.aab
 *.keystore
 !debug.keystore
+android/keystore.properties
+
+# === Secretos de despliegue (generados local, NUNCA al repo) ===
+infra/secrets.local.env
+*.local.env
 
 # === Prisma ===
 # (migraciones SÍ se versionan; solo se ignora el cliente generado si cae en repo)

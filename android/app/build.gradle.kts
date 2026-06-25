@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -5,9 +7,27 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
+// Credenciales de firma release desde android/keystore.properties (GITIGNORED).
+// Si el archivo no existe (CI, otra máquina), el release queda sin firmar y se avisa.
+val keystoreProps = Properties().apply {
+    val f = rootProject.file("keystore.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+
 android {
     namespace = "com.exiros.tracker"
     compileSdk = 34
+
+    signingConfigs {
+        if (keystoreProps.isNotEmpty()) {
+            create("release") {
+                storeFile = file(keystoreProps.getProperty("storeFile"))
+                storePassword = keystoreProps.getProperty("storePassword")
+                keyAlias = keystoreProps.getProperty("keyAlias")
+                keyPassword = keystoreProps.getProperty("keyPassword")
+            }
+        }
+    }
 
     defaultConfig {
         applicationId = "com.exiros.tracker"
@@ -30,6 +50,8 @@ android {
         }
         release {
             isMinifyEnabled = false
+            // Firma con el keystore real si keystore.properties está presente.
+            signingConfig = signingConfigs.findByName("release")
             // Config de producción por -P (gradle.properties / línea de comandos). Sin override
             // quedan los placeholders dev; el guard de abajo impide ensamblar un release con ellos.
             val apiUrl = (project.findProperty("EXIROS_API_URL") as String?)
