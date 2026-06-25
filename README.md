@@ -27,9 +27,9 @@ make backend   # corre la API en :3000   (en una terminal)
 make web       # corre el portal en :5173 (en otra terminal)
 ```
 
-Otros atajos útiles: `make check` (todos los gates lint+build+test), `make pentest`
-(prueba de seguridad), `make health`, `make db-reset`. Lista completa: **`make help`**.
-El paso a paso manual equivalente está abajo.
+Otros atajos útiles: `make check` (todos los gates lint+build+test), `make health`,
+`make db-reset`. Lista completa: **`make help`**. El paso a paso manual equivalente
+está abajo.
 
 ### 0) Clonar e instalar dependencias
 

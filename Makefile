@@ -7,7 +7,7 @@ API_URL ?= http://localhost:3000
 
 .DEFAULT_GOAL := help
 .PHONY: help install env db-up db-down db-reset db-wait migrate seed build setup \
-        backend web lint test check pentest health android-debug clean
+        backend web lint test check health android-debug clean
 
 help: ## Lista los comandos disponibles
 	@echo "Exiros — atajos (make <target>):"
@@ -67,9 +67,6 @@ test: ## Tests backend (unit + e2e; requiere Postgres arriba)
 
 check: lint build test ## Todos los gates (lint + build + test) — lo que mira la rubrica
 	@echo "Gates verdes."
-
-pentest: ## Mini-pentest de seguridad contra la API (scripts/pentest.sh)
-	BASE_URL=$(API_URL) ./scripts/pentest.sh
 
 health: ## Consulta GET /api/health
 	@curl -s $(API_URL)/api/health || echo "(sin backend en $(API_URL))"

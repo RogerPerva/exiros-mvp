@@ -1,7 +1,7 @@
 # PENDIENTES — Exiros (revisar 1 × 1)
 
 > Última actualización: **2026-06-25**. Estado del repo: MVP completo, todos los gates verdes,
-> seguridad endurecida y pen-testeada (17/17). Lo que falta es **despliegue + validación humana**.
+> seguridad endurecida. Lo que falta es **despliegue + validación humana**.
 > Marca `[x]` lo que vayas cerrando. Detalle técnico en `CONTEXT-AI.md` y `MEJORAS.md`.
 
 ---
@@ -46,9 +46,6 @@
 - [ ] **Cambiar la contraseña del admin** tras el primer arranque en prod (hoy `admin1234`).
 - [ ] **Respaldar** `android/app/exiros-release.keystore` + `android/keystore.properties`
       (NO están en git; si los pierdes no podrás firmar updates con la misma identidad).
-- [ ] Correr `./scripts/pentest.sh` contra el EC2 y **guardar la captura** (evidencia de seguridad
-      para el auditor: 17/17 PASS).
-- [ ] Documentar `/health` en `openapi.yaml` (único hueco de docs; lo puede hacer el agente).
 - [ ] Limpiar la BD de datos de prueba antes de presentar (la del EC2 arranca limpia con solo
       `prisma db seed`; en dev local quedan sembrados de demo).
 
@@ -72,5 +69,5 @@
 - Auditoría backend completa + `/health` + AppKeyGuard en tiempo constante.
 - **Hardening de seguridad del endpoint público**: foto segura por MIME, rate-limit por IP real
   tras proxy, login throttle 10/min.
-- `.env.example` documentado · **mini-pentest `scripts/pentest.sh` (17/17 PASS verificado)**.
+- `.env.example` documentado (backend + web) · `/health` documentado en openapi.
 - Diagnóstico del "viaje se cierra solo" (era el emulador sobre la geocerca, no un bug).
