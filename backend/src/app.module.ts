@@ -2,13 +2,14 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { ServeStaticModule } from '@nestjs/serve-static';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { join } from 'node:path';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { MobileModule } from './mobile/mobile.module';
 import { WebModule } from './web/web.module';
 import { HealthController } from './health.controller';
+import { ProxyThrottlerGuard } from './common/proxy-throttler.guard';
 
 /** Falla rápido al arranque si faltan secretos críticos (en vez de degradar en silencio). */
 function validateEnv(config: Record<string, unknown>): Record<string, unknown> {
@@ -49,6 +50,6 @@ function validateEnv(config: Record<string, unknown>): Record<string, unknown> {
     WebModule,
   ],
   controllers: [HealthController],
-  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
+  providers: [{ provide: APP_GUARD, useClass: ProxyThrottlerGuard }],
 })
 export class AppModule {}

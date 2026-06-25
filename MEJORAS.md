@@ -218,10 +218,46 @@ hostil (bbox MX, anti-futuro, `skipDuplicates`). Reportes con TZ correcta y proy
 - 🟢 **CORS:** `origin: WEB_ORIGIN ?? true` — en producción **definir `WEB_ORIGIN`** con el dominio
   del portal (hoy `true` refleja cualquier origen). Anotado en `infra/secrets.local.env`.
 
+### 2.C — Ciberseguridad del endpoint público (pase dedicado 2026-06-25)
+> El móvil es de **acceso libre** → `POST /api/mobile/trips` (crear viaje + foto) y
+> `POST /api/mobile/trips/:id/locations` (ingesta) son **superficie pública**. Revisión enfocada.
+
+**Lo que YA estaba bien (defensa real, no de adorno):**
+- **tripToken nunca en claro:** derivado por **HMAC**(`TRIP_TOKEN_SECRET`) y guardado **solo como
+  sha256**; el guard busca por hash. Robo de BD no expone tokens usables.
+- **Anti-IDOR:** la ingesta exige que el `:id` de la URL == viaje del token (no se ingiere a viaje
+  ajeno). Cierre **atómico** (`updateMany WHERE EN_RUTA`) → sin carreras.
+- **Validación estricta de entrada** (anti-DoS de payload): arrays acotados (`ArrayMaxSize 1000`),
+  strings con `MaxLength`, números con rango, UUID/ISO8601; `whitelist+forbidNonWhitelisted` corta
+  mass-assignment; body-limit 256kb; foto ≤5MB. **Prisma parametrizado** (sin SQLi). **helmet**
+  (incl. `nosniff`). Secretos **fail-fast** al boot. Login con **401 genérico** (no enumera) + bcrypt.
+
+**Hallazgos corregidos esta sesión:**
+- ✅ 🟡 **Subida de foto podía alojar contenido arbitrario en el dominio.** La extensión salía del
+  `originalname` del cliente y el tipo se validaba **solo por cabecera MIME** (`skipMagicNumbers`),
+  así que un atacante con la app-key podía subir bytes arbitrarios como `evil.html` y servirlos en
+  `/uploads`. **Fix:** la extensión ahora se deriva del **MIME aceptado** (jpeg→.jpg, png→.png); todo
+  lo demás cae a `.bin` y el `FileTypeValidator` lo descarta (huérfano limpiado, H3). Ya no se puede
+  servir HTML/SVG ejecutable desde el dominio.
+- ✅ 🟡 **Rate-limit inútil detrás de cloudflared.** El `ThrottlerGuard` indexaba por `req.ip`, que
+  detrás del túnel es `127.0.0.1` para **todo** el tráfico → cubo único compartido (un atacante agota
+  el límite de todos; no se distingue al abusador). **Fix:** `ProxyThrottlerGuard` rastrea por
+  `CF-Connecting-IP`/`X-Forwarded-For` **solo si `TRUST_PROXY_IP=true`** (las cabeceras son
+  falsificables → en acceso directo NO se confían, se usa `req.ip`). **Poner `TRUST_PROXY_IP=true`
+  en el `.env` del EC2.**
+- ✅ 🟢 **Login anti fuerza-bruta:** `@Throttle(10/min)` sobre el global de 100/min.
+- ✅ 🟢 **AppKeyGuard en tiempo constante** (ver 2.A). Sigue siendo barrera débil **por diseño**
+  (clave extraíble del APK); el control fuerte de la ingesta es el tripToken. Lo peor que logra un
+  atacante con la app-key es crear viajes basura (acotados por rate-limit + validación, visibles y
+  borrables); **no hay exposición de datos**.
+
+**Notas 🟢 sin acción (informativas):** export sin tope de filas (memoria, escala MVP); definir
+`WEB_ORIGIN` en prod (hoy `true` refleja cualquier origen).
+
 ### 2.B — Conclusión
-No hay deuda estructural ni hallazgos 🔴/🟡 en el backend. Los 2 ítems accionables (health + guard
-constante) quedaron **hechos** esta sesión; los 2 restantes son 🟢 informativos sin acción requerida
-para el MVP. Backend listo para auditoría.
+Backend de calidad alta, sin deuda estructural. Tras el pase de seguridad: **2 hallazgos 🟡
+corregidos** (foto + rate-limit tras proxy) + 2 endurecimientos 🟢 (login throttle, guard constante).
+Verificado: lint puro + build + 25 unit + 46 e2e en verde. **Listo para auditoría de ciberseguridad.**
 
 ## 3) Android — Fidelidad UI vs. referencia
 
