@@ -8,6 +8,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { MobileModule } from './mobile/mobile.module';
 import { WebModule } from './web/web.module';
+import { HealthController } from './health.controller';
 
 /** Falla rápido al arranque si faltan secretos críticos (en vez de degradar en silencio). */
 function validateEnv(config: Record<string, unknown>): Record<string, unknown> {
@@ -47,7 +48,7 @@ function validateEnv(config: Record<string, unknown>): Record<string, unknown> {
     MobileModule,
     WebModule,
   ],
-  controllers: [],
+  controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}

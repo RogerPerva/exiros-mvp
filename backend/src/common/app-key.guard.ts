@@ -5,6 +5,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { timingSafeEqual } from 'node:crypto';
 import type { Request } from 'express';
 
 /**
@@ -20,9 +21,17 @@ export class AppKeyGuard implements CanActivate {
     const req = context.switchToHttp().getRequest<Request>();
     const provided = req.header('x-app-key');
     const expected = this.config.get<string>('APP_KEY');
-    if (!expected || provided !== expected) {
+    if (!expected || !provided || !safeEqual(provided, expected)) {
       throw new UnauthorizedException('X-App-Key inválida');
     }
     return true;
   }
+}
+
+/** Comparación en tiempo constante (evita timing-attack). Distinta longitud → false. */
+function safeEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(a);
+  const bb = Buffer.from(b);
+  if (ab.length !== bb.length) return false;
+  return timingSafeEqual(ab, bb);
 }

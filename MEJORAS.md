@@ -10,7 +10,7 @@
 > (cambios iso-funcionales, bajo riesgo). Fase 2 y 3 = deuda post-MVP. **Nada debe romper la demo.**
 
 Secciones: **[0) Limpieza pre-producción](#0-limpieza-pre-producción--pre-pruebas-transversal)** ·
-**[1) WebApp](#1-webapp)** ✅ código + fidelidad UI · **[2) Backend](#2-backend)** ⏳ pendiente ·
+**[1) WebApp](#1-webapp)** ✅ código + fidelidad UI · **[2) Backend](#2-backend)** ✅ auditado ·
 **[3) Android](#3-android)** ✅ fidelidad UI.
 
 ---
@@ -197,8 +197,31 @@ precisión. Solo hay 1 hueco de funcionalidad y varios detalles menores/decision
 ---
 
 ## 2) Backend
-⏳ **Pendiente de auditar** (siguiente sección). NestJS + Prisma. Nota previa: el refactor a
-feature-folders (`backend/src/web/`) y el hardening de seguridad ya se hicieron (ver `CONTEXT-AI.md`).
+✅ **Auditado 2026-06-25.** NestJS + Prisma, ~2000 LOC. **Veredicto: calidad alta, muy por encima
+de lo típico en un MVP.** Arquitectura en capas limpia (controllers finos → services → Prisma),
+feature-folders, DTOs con class-validator, guards/filtros bien separados. Defensa en capas real
+(ADR-007): helmet, body-limit 256kb, ValidationPipe `whitelist+forbidNonWhitelisted+transform`,
+rate-limit global, filtro de excepciones único que además limpia fotos huérfanas (H3) y enmascara
+los 500. Fail-fast de secretos al arranque. Cierre de viaje **atómico y condicional** (`updateMany
+WHERE status=EN_RUTA`) con idempotencia por `closeRequestId`. Ingesta que trata cada punto como
+hostil (bbox MX, anti-futuro, `skipDuplicates`). Reportes con TZ correcta y proyección sin over-fetch.
+
+### 2.A — Hallazgos
+- ✅ 🟢 **`/health` (H6) AÑADIDO** (`health.controller.ts`): readiness con `SELECT 1`, público y
+  exento del rate-limit (`@SkipThrottle`). Verificado en vivo (`{status:ok,db:up}`). Para EC2/cloudflared.
+- ✅ 🟢 **`AppKeyGuard` en tiempo constante** (`timingSafeEqual`): elimina el timing-leak de la
+  comparación `!==`. Sigue siendo barrera débil por diseño (la clave es extraíble del APK; la defensa
+  fuerte es el `tripToken`), pero sin fuga temporal.
+- 🟢 **Export sin tope de filas** (`reports.service.ts`): `findMany` sin `take` carga todos los viajes
+  del filtro en memoria antes de escribir el .xlsx. Irrelevante a escala MVP; si crece, paginar o
+  hacer streaming. NO tocado (sin valor hoy, posible cambio de contrato).
+- 🟢 **CORS:** `origin: WEB_ORIGIN ?? true` — en producción **definir `WEB_ORIGIN`** con el dominio
+  del portal (hoy `true` refleja cualquier origen). Anotado en `infra/secrets.local.env`.
+
+### 2.B — Conclusión
+No hay deuda estructural ni hallazgos 🔴/🟡 en el backend. Los 2 ítems accionables (health + guard
+constante) quedaron **hechos** esta sesión; los 2 restantes son 🟢 informativos sin acción requerida
+para el MVP. Backend listo para auditoría.
 
 ## 3) Android — Fidelidad UI vs. referencia
 
