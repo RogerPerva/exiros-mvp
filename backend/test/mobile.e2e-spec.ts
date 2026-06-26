@@ -269,6 +269,25 @@ describe('Flujo móvil (e2e)', () => {
     expect(res.status).toBe(409);
   });
 
+  it('foto con MIME image/jpeg pero bytes no-imagen → 400 (magic number, M-2)', async () => {
+    const fake = Buffer.from('esto no es una imagen, solo texto plano');
+    const res = await request(app.getHttpServer())
+      .post('/api/mobile/trips')
+      .set('x-app-key', appKey)
+      .field('providerNumber', '1001')
+      .field('providerName', 'Transporte e2e')
+      .field('folio', '500999')
+      .field('frontPlate', 'XYZ-99-99')
+      .field('destinationId', destId)
+      .field('deviceId', `dev-fake-img-${Date.now()}`)
+      .field('clientRequestId', `crid-fake-img-${Date.now()}`)
+      .attach('photo', fake, {
+        filename: 'carga.jpg',
+        contentType: 'image/jpeg',
+      });
+    expect(res.status).toBe(400);
+  });
+
   it('GET /api/web/trips → 200 paginado {data,total,page,pageSize}; el viaje aparece sin ubicación aún', async () => {
     const res = await request(app.getHttpServer())
       .get('/api/web/trips')
