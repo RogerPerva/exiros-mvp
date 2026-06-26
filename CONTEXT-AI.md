@@ -3,6 +3,7 @@
 > Sigue la metodología global (`~/.agents/METODOLOGIA.md`). Si esta contradice un impulso, gana la metodología; si este archivo contradice a la metodología en algo específico del proyecto, gana este archivo.
 > **Este es el archivo de contexto vivo entre sesiones.** Leer SIEMPRE al iniciar sesión, junto con `PLAN.md`. No re-explorar el repo si esto y el plan bastan.
 > **Nombre:** este archivo es la instancia para este proyecto de lo que la metodología llama genéricamente "AGENTS.md". Renombrado a `CONTEXT-AI.md` por claridad. NO se auto-carga en Claude Code (busca `CLAUDE.md`); se lee manualmente al inicio de cada sesión.
+> **🔒 CONVENCIÓN DE SECRETOS Y URLs (este repo es COMPARTIDO):** NUNCA escribir en este archivo (ni en ningún trackeado) secretos vivos ni URLs efímeras: `APP_KEY`, `JWT_SECRET`, `TRIP_TOKEN_SECRET`, contraseñas, ni la URL `*.trycloudflare.com` (cambia en cada reinicio del túnel). En la bitácora usar placeholders (`APP_KEY-REDACTADO`, `URL-EC2-RETIRADA`). Las URLs/keys vivas viven SOLO en archivos gitignored (`web/.env.local`, `infra/secrets.local.env`, `android/keystore.properties`) y en el `.env` del EC2. Al cambiar el túnel: actualizar `web/.env.local`, **validar con `curl <url>/api/health`** y recompilar el APK; no dejar la URL nueva escrita aquí. Si un secreto se filtra a un commit → **rotarlo** en el EC2 (redactar el archivo no lo borra del historial de git).
 
 ---
 
