@@ -43,6 +43,16 @@ export default function ViajesPage() {
   const current = Math.min(page, totalPages);
   const slice = filtered.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);
 
+  const hasFilters = search || estado || destino || from || to;
+  const clearFilters = () => {
+    setSearch('');
+    setEstado('');
+    setDestino('');
+    setFrom('');
+    setTo('');
+    setPage(1);
+  };
+
   async function onExport() {
     setExporting(true);
     try {
@@ -108,6 +118,11 @@ export default function ViajesPage() {
             </option>
           ))}
         </select>
+        {hasFilters && (
+          <button className="viajes-clear" onClick={clearFilters}>
+            Limpiar filtros
+          </button>
+        )}
       </div>
 
       {error && <p className="page-error">No se pudieron cargar los viajes: {error}</p>}

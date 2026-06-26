@@ -45,6 +45,15 @@ export class TripCloseService {
       closedById,
     } = params;
 
+    // "Punto de cierre": último punto ya guardado del viaje. En el cierre del operador,
+    // el SyncWorker sube los puntos pendientes ANTES de mandar el cierre, así que aquí ya
+    // está disponible. null si el viaje nunca reportó un punto.
+    const lastPoint = await this.prisma.location.findFirst({
+      where: { tripId },
+      orderBy: [{ recordedAt: 'desc' }, { id: 'desc' }],
+      select: { lat: true, lng: true },
+    });
+
     const updated = await this.prisma.trip.updateMany({
       where: { id: tripId, status: 'EN_RUTA' },
       data: {
@@ -52,6 +61,8 @@ export class TripCloseService {
         closureType,
         observations,
         endedAt,
+        endLat: lastPoint?.lat ?? null,
+        endLng: lastPoint?.lng ?? null,
         closedById: closedById ?? null,
         closeRequestId: closeRequestId ?? null,
       },

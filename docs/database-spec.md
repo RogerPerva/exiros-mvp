@@ -93,6 +93,7 @@ Cuatro entidades. Volumen bajo (~200 usuarios, lotes de ~10 puntos cada 15–20 
 | `status` | Enum `TripStatus` | `EN_RUTA` \| `CONCLUIDO`, default `EN_RUTA` | **11. Estatus** |
 | `closureType` | Enum `ClosureType`? | null mientras En ruta | **12. Tipo de Cierre** |
 | `observations` | String? (text) | Obligatorio **solo si** cierre manual (regla en service) | **13. Observaciones** |
+| `endLat` / `endLng` | Float? | Snapshot del último punto guardado al cerrar (manual operador/admin o automático por geocerca); null solo si el viaje nunca reportó un punto | "Punto de cierre" del viaje (auditoría) |
 | `photoPath` | String | No nulo | Foto de carga (ruta del archivo en disco; el binario NO va en BD) |
 | `closedById` | UUID? | FK → User | Quién forzó el cierre (null en auto y en cierre por operador) |
 | `closeRequestId` | UUID? | Único | Idempotencia del cierre manual móvil; null para auto/admin |

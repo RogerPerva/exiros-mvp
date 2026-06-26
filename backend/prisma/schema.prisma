@@ -82,6 +82,11 @@ model Trip {
   closureType    ClosureType?
   observations   String?
 
+  // Snapshot de la última coordenada guardada al cerrar (manual operador/admin o
+  // automático por geocerca): deja el "punto de cierre" fijo, no solo en la ruta.
+  endLat         Float?
+  endLng         Float?
+
   closedById     String?
   closedBy       User?        @relation("TripClosedBy", fields: [closedById], references: [id])
   closeRequestId String?      @unique

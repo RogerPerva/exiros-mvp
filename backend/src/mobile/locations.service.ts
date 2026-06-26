@@ -131,12 +131,16 @@ export class LocationsService {
     );
     if (!inside) return false;
 
+    // "Punto de cierre": el último punto elegible (el más reciente) = dónde quedó al cerrar.
+    const last = recent[0];
     const res = await this.prisma.trip.updateMany({
       where: { id: trip.id, status: 'EN_RUTA' },
       data: {
         status: 'CONCLUIDO',
         closureType: 'AUTO_GEOFENCE',
         endedAt: new Date(),
+        endLat: last?.lat ?? null,
+        endLng: last?.lng ?? null,
       },
     });
     // count 1 = lo cerramos nosotros; 0 = otro actor lo cerró antes (igual está CONCLUIDO).

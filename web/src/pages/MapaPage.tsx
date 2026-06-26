@@ -45,11 +45,10 @@ export default function MapaPage() {
   const filtered = all.filter((t) =>
     matches(t, states.get(t.id)!, { search, estado, destino, proveedor }),
   );
-  // "Viajes visibles en el mapa" = activos con ubicación (lo que TripsMap realmente pinta).
-  const visible = filtered.filter((t) => states.get(t.id) !== 'CONCLUIDO' && t.lastLocation);
-  const visibleTotal = all.filter(
-    (t) => states.get(t.id) !== 'CONCLUIDO' && t.lastLocation,
-  ).length;
+  // "Viajes visibles en el mapa" = todo viaje con ubicación (lo que TripsMap realmente pinta):
+  // activos en su último punto y concluidos en su punto final.
+  const visible = filtered.filter((t) => t.lastLocation);
+  const visibleTotal = all.filter((t) => t.lastLocation).length;
 
   const hasFilters = search || estado || destino || proveedor;
   const clearFilters = () => {

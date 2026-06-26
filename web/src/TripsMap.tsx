@@ -12,8 +12,9 @@ import { DEFAULT_CENTER } from './constants';
 type Base = 'mapa' | 'satelite';
 
 /**
- * Mapa de tránsito W1 (10.2). Pinta el último punto de cada viaje activo (En ruta / Detenido)
- * coloreado por su estado derivado + la geocerca de su destino. Panel de capas
+ * Mapa de tránsito W1 (10.2). Pinta el último punto de cada viaje con ubicación —activos
+ * (En ruta / Detenido) y concluidos en su punto final— coloreado por su estado derivado
+ * (gris = Concluido) + la geocerca de su destino. Panel de capas
  * (Mapa / Satélite / Geocercas / Clusters). Usa CircleMarker para evitar el problema de los
  * iconos PNG de Leaflet con bundlers (Vite); los clusters usan leaflet.markercluster (vanilla,
  * sin riesgo de compat con React 19).
@@ -31,11 +32,12 @@ export default function TripsMap({
   const [showGeofences, setShowGeofences] = useState(true);
   const [showClusters, setShowClusters] = useState(false);
 
-  // Solo viajes activos con ubicación: lo que tiene sentido pintar en un mapa "en tiempo real".
+  // Todo viaje con ubicación conocida: activos (En ruta/Detenido) en su último punto y
+  // concluidos en su punto final. El color por estado (gris = Concluido) los distingue.
   const plotted = useMemo(
     () =>
       trips
-        .filter((t) => t.status === 'EN_RUTA' && t.lastLocation)
+        .filter((t) => t.lastLocation)
         .map((t) => ({ trip: t, state: deriveState(t) })),
     [trips],
   );

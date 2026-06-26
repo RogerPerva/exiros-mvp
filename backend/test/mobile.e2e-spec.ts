@@ -64,9 +64,9 @@ describe('Flujo móvil (e2e)', () => {
     return request(app.getHttpServer())
       .post('/api/mobile/trips')
       .set('x-app-key', appKey)
-      .field('providerNumber', over.providerNumber ?? 'PRV-001')
+      .field('providerNumber', over.providerNumber ?? '1001')
       .field('providerName', over.providerName ?? 'Transporte e2e')
-      .field('folio', over.folio ?? 'F-E2E')
+      .field('folio', over.folio ?? '500123')
       .field('frontPlate', over.frontPlate ?? 'ABC-12-34')
       .field('destinationId', over.destinationId ?? destId)
       .field('deviceId', over.deviceId ?? deviceId)
@@ -214,6 +214,31 @@ describe('Flujo móvil (e2e)', () => {
     expect(body.details).toBeDefined();
   });
 
+  // Doc fuente §3.2/§7.1: Núm. de Proveedor y Folio son estrictamente numéricos.
+  it('POST /trips con providerNumber no numérico → 400', async () => {
+    const res = await postTrip({ providerNumber: 'PRV-001' });
+    expect(res.status).toBe(400);
+    expect((res.body as ErrorBody).error).toBe('BadRequest');
+  });
+
+  it('POST /trips con folio no numérico → 400', async () => {
+    const res = await postTrip({ folio: 'F-123' });
+    expect(res.status).toBe(400);
+    expect((res.body as ErrorBody).error).toBe('BadRequest');
+  });
+
+  it('POST /trips con providerName con símbolos basura → 400', async () => {
+    const res = await postTrip({ providerName: 'ABC #1 "x"/' });
+    expect(res.status).toBe(400);
+    expect((res.body as ErrorBody).error).toBe('BadRequest');
+  });
+
+  it('POST /trips con placa con caracteres inválidos → 400', async () => {
+    const res = await postTrip({ frontPlate: 'ABC#12/34' });
+    expect(res.status).toBe(400);
+    expect((res.body as ErrorBody).error).toBe('BadRequest');
+  });
+
   it('POST /trips válido → 201 con tripToken y geocerca (snapshot)', async () => {
     const res = await postTrip();
     const body = res.body as TripResp;
@@ -353,6 +378,9 @@ describe('Flujo móvil (e2e)', () => {
     const closed = await prisma.trip.findUnique({ where: { id: tripId } });
     expect(closed?.status).toBe('CONCLUIDO');
     expect(closed?.closureType).toBe('AUTO_GEOFENCE');
+    // Punto de cierre = última coordenada guardada (la que entró a la geocerca).
+    expect(closed?.endLat).toBeCloseTo(25.6, 2);
+    expect(closed?.endLng).toBeCloseTo(-100.3, 2);
   });
 
   it('ingesta a un viaje ya CONCLUIDO → 200, descarta puntos, stopTracking true', async () => {
@@ -419,6 +447,34 @@ describe('Flujo móvil (e2e)', () => {
     // 6.1: el cierre admin ya registra al usuario autenticado (closedById deja de ser null).
     const closed = await prisma.trip.findUnique({ where: { id: t.id } });
     expect(closed?.closedById).not.toBeNull();
+  });
+
+  it('cierre manual fija el "punto de cierre" desde el último punto guardado', async () => {
+    const t = await makeTrip('endpoint');
+    await request(app.getHttpServer())
+      .post(`/api/mobile/trips/${t.id}/locations`)
+      .set('Authorization', `Bearer ${t.token}`)
+      .send(
+        batch({
+          batchId: randomUUID(),
+          points: [
+            {
+              lat: 20.5,
+              lng: -97.4,
+              accuracyMeters: 10,
+              recordedAt: new Date().toISOString(),
+            },
+          ],
+        }),
+      );
+    const res = await request(app.getHttpServer())
+      .post(`/api/web/trips/${t.id}/close`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ observations: 'Cierre con punto' });
+    expect(res.status).toBe(200);
+    const closed = await prisma.trip.findUnique({ where: { id: t.id } });
+    expect(closed?.endLat).toBeCloseTo(20.5, 2);
+    expect(closed?.endLng).toBeCloseTo(-97.4, 2);
   });
 
   it('cierre forzado web por MONITOR → 403 (solo ADMIN)', async () => {

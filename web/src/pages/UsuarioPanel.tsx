@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { X, Eye, EyeOff } from 'lucide-react';
 import { createUser, updateUser, type Role, type StaffUser } from '../api';
+import { sanitizeName, isValidEmail } from '../validation';
 import './usuarios.css';
 
 const ROLES: { value: Role; label: string }[] = [
@@ -36,6 +37,10 @@ export default function UsuarioPanel({
       );
       return;
     }
+    if (!editing && !isValidEmail(email)) {
+      setError('Correo electrónico inválido.');
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -64,7 +69,7 @@ export default function UsuarioPanel({
           className="modal-input"
           placeholder="Ej. Juan Pérez"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => setName(sanitizeName(e.target.value))}
         />
 
         <label className="modal-label">Correo electrónico</label>

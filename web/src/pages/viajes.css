@@ -35,6 +35,15 @@
   font-size: 0.85rem;
   font-family: inherit;
 }
+/* "Limpiar filtros": mismo look que el del Mapa (.map-clear) para consistencia. */
+.viajes-clear {
+  background: transparent;
+  border: none;
+  color: #1d6fe0;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
 
 .viajes-table-wrap {
   background: #fff;

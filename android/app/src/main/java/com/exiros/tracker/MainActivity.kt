@@ -61,6 +61,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -230,6 +231,10 @@ private fun LabeledField(
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
     capitalize: Boolean = false,
+    numeric: Boolean = false,
+    uppercase: Boolean = false,
+    keep: ((Char) -> Boolean)? = null,
+    maxLength: Int = 0,
 ) {
     Column(modifier = modifier) {
         Text(
@@ -241,15 +246,25 @@ private fun LabeledField(
         )
         OutlinedTextField(
             value = value,
-            onValueChange = onValueChange,
+            // Validación en la fuente (doc §3.2): el carácter inválido nunca llega a aparecer.
+            onValueChange = { raw ->
+                var s = if (uppercase) raw.uppercase() else raw
+                s = when {
+                    numeric -> s.filter(Char::isDigit)
+                    keep != null -> s.filter(keep)
+                    else -> s
+                }
+                if (maxLength > 0 && s.length > maxLength) s = s.take(maxLength)
+                onValueChange(s)
+            },
             singleLine = true,
             shape = fieldShape,
             modifier = Modifier.fillMaxWidth(),
             colors = exirosFieldColors(),
-            keyboardOptions = if (capitalize) {
-                KeyboardOptions(capitalization = KeyboardCapitalization.Characters)
-            } else {
-                KeyboardOptions.Default
+            keyboardOptions = when {
+                numeric -> KeyboardOptions(keyboardType = KeyboardType.Number)
+                capitalize -> KeyboardOptions(capitalization = KeyboardCapitalization.Characters)
+                else -> KeyboardOptions.Default
             },
         )
     }
@@ -328,19 +343,27 @@ fun TripFormScreen(
             modifier = Modifier.padding(top = 0.dp),
         )
 
-        LabeledField("Núm. de Proveedor", providerNumber, { providerNumber = it })
-        LabeledField("Nombre de Proveedor", providerName, { providerName = it })
-        LabeledField("Folio / Remito", folio, { folio = it })
+        LabeledField("Núm. de Proveedor", providerNumber, { providerNumber = it }, numeric = true)
+        // Alfanumérico (doc §3.2): letras (incl. acentos/ñ), dígitos, espacios y
+        // puntuación básica de razón social (. , & -). Bloquea el resto: '"/(#!_ etc.
+        LabeledField(
+            "Nombre de Proveedor", providerName, { providerName = it },
+            keep = { it.isLetterOrDigit() || it in " .,&-" },
+        )
+        LabeledField("Folio / Remito", folio, { folio = it }, numeric = true)
 
         // Placas en una fila (dos columnas)
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            // Placa alfanumérica flexible MX (doc §3.2): letras, dígitos y guion, en mayúsculas.
             LabeledField(
-                "Placa Delantera", frontPlate, { frontPlate = it.uppercase() },
+                "Placa Delantera", frontPlate, { frontPlate = it },
                 modifier = Modifier.weight(1f), capitalize = true,
+                uppercase = true, keep = { it.isLetterOrDigit() || it == '-' }, maxLength = 10,
             )
             LabeledField(
-                "Placa Trasera (opcional)", rearPlate, { rearPlate = it.uppercase() },
+                "Placa Trasera (opcional)", rearPlate, { rearPlate = it },
                 modifier = Modifier.weight(1f), capitalize = true,
+                uppercase = true, keep = { it.isLetterOrDigit() || it == '-' }, maxLength = 10,
             )
         }
 

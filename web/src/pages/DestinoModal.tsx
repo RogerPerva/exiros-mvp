@@ -15,6 +15,7 @@ import {
   type DestinationInput,
 } from '../api';
 import { DEFAULT_CENTER } from '../constants';
+import { sanitizeLabel } from '../validation';
 import './destinos.css';
 
 const RADIUS_MIN = 100;
@@ -88,9 +89,9 @@ export default function DestinoModal({
         <label className="modal-label">Nombre</label>
         <input
           className="modal-input"
-          placeholder="Ej. Planta Monterrey"
+          placeholder="Ej. Planta Veracruz"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => setName(sanitizeLabel(e.target.value))}
         />
 
         <label className="modal-label">Centro en el mapa</label>
