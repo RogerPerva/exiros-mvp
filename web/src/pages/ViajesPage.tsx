@@ -13,15 +13,11 @@ import {
 } from '../api';
 import { useAuth } from '../auth-context';
 import { formatDateTime } from '../format';
+import { deriveState, STATE_LABEL } from '../tripState';
 import './page.css';
 import './viajes.css';
 
 const PAGE_SIZE = 8;
-
-const STATUS_LABEL: Record<TripStatus, string> = {
-  EN_RUTA: 'En ruta',
-  CONCLUIDO: 'Concluido',
-};
 
 /** W2 Viajes (10.3): historial con filtros, tabla, paginación y "Exportar a Excel".
  *  Filtros y paginación son SERVER-SIDE: el backend devuelve solo la página pedida. */
@@ -192,15 +188,18 @@ export default function ViajesPage() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((t) => (
+                {rows.map((t) => {
+                  // Mismo estado derivado que el mapa (incluye "Detenido"), no el status crudo.
+                  const estado = deriveState(t);
+                  return (
                   <tr key={t.id} onClick={() => navigate(`/viajes/${t.id}`)}>
                     <td className="viajes-folio">{t.folio}</td>
                     <td>{t.providerName}</td>
                     <td>{t.destination?.name ?? '—'}</td>
                     <td>{t.frontPlate}</td>
                     <td>
-                      <span className={`badge badge--${t.status.toLowerCase()}`}>
-                        {STATUS_LABEL[t.status]}
+                      <span className={`badge badge--${estado.toLowerCase()}`}>
+                        {STATE_LABEL[estado]}
                       </span>
                     </td>
                     <td>{formatDateTime(t.startedAt)}</td>
@@ -217,7 +216,8 @@ export default function ViajesPage() {
                       </button>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
                 {rows.length === 0 && (
                   <tr>
                     <td colSpan={7} className="viajes-empty">

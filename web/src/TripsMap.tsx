@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Circle, CircleMarker, LayerGroup, MapContainer, Popup, TileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -184,15 +184,26 @@ function ClusterLayer({
   return null;
 }
 
-/** Centra y acerca el mapa al viaje seleccionado (zoom ≥14 al punto, sin alejar si ya estás más cerca). */
+/**
+ * Centra y acerca el mapa al viaje seleccionado (zoom ≥14, sin alejar si ya estás más cerca).
+ * Solo actúa cuando cambia el viaje ELEGIDO (su id), no en cada refresco del polling: así el
+ * monitorista puede mover/explorar el mapa libremente sin que se le "salte" de vuelta cada
+ * 10 s. El ref recuerda el último id centrado; al deseleccionar se resetea para poder volver
+ * a centrar el mismo viaje si se reelige.
+ */
 function PanTo({ trip }: { trip: Trip | null }) {
   const map = useMap();
+  const lastCenteredId = useRef<string | null>(null);
   useEffect(() => {
-    if (trip?.lastLocation) {
-      map.setView([trip.lastLocation.lat, trip.lastLocation.lng], Math.max(map.getZoom(), 14), {
-        animate: true,
-      });
+    if (!trip?.lastLocation) {
+      lastCenteredId.current = null;
+      return;
     }
+    if (trip.id === lastCenteredId.current) return;
+    lastCenteredId.current = trip.id;
+    map.setView([trip.lastLocation.lat, trip.lastLocation.lng], Math.max(map.getZoom(), 14), {
+      animate: true,
+    });
   }, [map, trip]);
   return null;
 }

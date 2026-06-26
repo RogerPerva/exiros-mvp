@@ -12,6 +12,7 @@ import {
   type TripDetail,
 } from '../api';
 import { useAuth } from '../auth-context';
+import { deriveState, STATE_LABEL } from '../tripState';
 import './page.css';
 import './detalle.css';
 import './destinos.css'; // reutiliza los estilos de modal (.modal-*)
@@ -85,6 +86,14 @@ export default function ViajeDetallePage() {
   }
   if (!trip) return <p className="page-state">Cargando viaje…</p>;
 
+  // Mismo estado derivado que el mapa/listado (incluye "Detenido"): se calcula con la última
+  // lectura de la ruta, no con el status crudo, para que las vistas no se contradigan.
+  const lastPoint = trip.route.at(-1) ?? null;
+  const estado = deriveState({
+    status: trip.status,
+    lastLocation: lastPoint ? { recordedAt: lastPoint.recordedAt } : null,
+  });
+
   return (
     <section>
       <nav className="detalle-crumbs">
@@ -92,9 +101,7 @@ export default function ViajeDetallePage() {
         <span>›</span>
         <span>Folio {trip.folio}</span>
         <span>›</span>
-        <span className={`badge badge--${trip.status.toLowerCase()}`}>
-          {trip.status === 'EN_RUTA' ? 'En ruta' : 'Concluido'}
-        </span>
+        <span className={`badge badge--${estado.toLowerCase()}`}>{STATE_LABEL[estado]}</span>
       </nav>
 
       <div className="page-head">

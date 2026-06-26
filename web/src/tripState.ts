@@ -1,4 +1,4 @@
-import type { Trip } from './api';
+import type { TripStatus } from './api';
 
 /**
  * Estado de monitoreo que se muestra en el portal. El backend solo persiste EN_RUTA/CONCLUIDO
@@ -11,7 +11,12 @@ export type MapState = 'EN_RUTA' | 'DETENIDO' | 'CONCLUIDO';
  *  reportar; 3 min permite demostrar el estado sin esperar el ciclo real de 15–20 min. */
 const STOPPED_MS = 3 * 60 * 1000;
 
-export function deriveState(t: Trip, now: number = Date.now()): MapState {
+/** Acepta cualquier objeto con el status y la última lectura (Trip del listado/mapa o el
+ *  último punto de la ruta en el detalle): así el estado se deriva igual en todas las vistas. */
+export function deriveState(
+  t: { status: TripStatus; lastLocation: { recordedAt: string } | null },
+  now: number = Date.now(),
+): MapState {
   if (t.status === 'CONCLUIDO') return 'CONCLUIDO';
   if (t.lastLocation && now - new Date(t.lastLocation.recordedAt).getTime() > STOPPED_MS) {
     return 'DETENIDO';
