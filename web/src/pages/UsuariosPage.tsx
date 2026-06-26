@@ -59,6 +59,12 @@ export default function UsuariosPage() {
     });
   }, [users, search, roleFilter]);
 
+  const hasFilters = search || roleFilter;
+  const clearFilters = () => {
+    setSearch('');
+    setRoleFilter('');
+  };
+
   async function doBaja() {
     if (!confirmBaja) return;
     try {
@@ -94,6 +100,11 @@ export default function UsuariosPage() {
           <option value="ADMIN">Administrador</option>
           <option value="MONITOR">Monitorista</option>
         </select>
+        {hasFilters && (
+          <button className="viajes-clear" onClick={clearFilters}>
+            Limpiar filtros
+          </button>
+        )}
       </div>
 
       {error && <p className="page-error">{error}</p>}

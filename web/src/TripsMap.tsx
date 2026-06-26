@@ -184,12 +184,12 @@ function ClusterLayer({
   return null;
 }
 
-/** Centra el mapa en el viaje seleccionado desde la tabla. */
+/** Centra y acerca el mapa al viaje seleccionado (zoom ≥14 al punto, sin alejar si ya estás más cerca). */
 function PanTo({ trip }: { trip: Trip | null }) {
   const map = useMap();
   useEffect(() => {
     if (trip?.lastLocation) {
-      map.setView([trip.lastLocation.lat, trip.lastLocation.lng], Math.max(map.getZoom(), 9), {
+      map.setView([trip.lastLocation.lat, trip.lastLocation.lng], Math.max(map.getZoom(), 14), {
         animate: true,
       });
     }

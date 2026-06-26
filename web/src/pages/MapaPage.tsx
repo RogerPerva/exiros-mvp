@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import TripsMap from '../TripsMap';
@@ -10,6 +10,8 @@ import './page.css';
 import './mapa.css';
 import './viajes.css';
 
+const PAGE_SIZE = 8;
+
 /** W1 Mapa "Monitoreo en tiempo real" (10.2). KPIs En ruta/Detenido/Concluido (estado derivado),
  *  filtros + capas, leyenda de colores y tabla de viajes visibles en el mapa. */
 export default function MapaPage() {
@@ -20,6 +22,7 @@ export default function MapaPage() {
   const [destino, setDestino] = useState('');
   const [proveedor, setProveedor] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
 
   const all = useMemo(() => trips ?? [], [trips]);
 
@@ -50,6 +53,11 @@ export default function MapaPage() {
   const visible = filtered.filter((t) => t.lastLocation);
   const visibleTotal = all.filter((t) => t.lastLocation).length;
 
+  // Paginación de la tabla (la lista puede ser larga al incluir concluidos).
+  const totalPages = Math.max(1, Math.ceil(visible.length / PAGE_SIZE));
+  const current = Math.min(page, totalPages);
+  const pageSlice = visible.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);
+
   const hasFilters = search || estado || destino || proveedor;
   const clearFilters = () => {
     setSearch('');
@@ -58,6 +66,10 @@ export default function MapaPage() {
     setProveedor('');
   };
   const toggleEstado = (s: MapState) => setEstado(estado === s ? '' : s);
+
+  // Al cambiar cualquier filtro, vuelve a la primera página.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => setPage(1), [search, estado, destino, proveedor]);
 
   return (
     <section>
@@ -162,7 +174,7 @@ export default function MapaPage() {
                 </tr>
               </thead>
               <tbody>
-                {visible.map((t) => {
+                {pageSlice.map((t) => {
                   const s = states.get(t.id)!;
                   return (
                     <tr
@@ -203,6 +215,32 @@ export default function MapaPage() {
               </tbody>
             </table>
           </div>
+
+          {totalPages > 1 && (
+            <div className="viajes-foot">
+              <span>Página {current} de {totalPages}</span>
+              <div className="viajes-pages">
+                <button disabled={current === 1} onClick={() => setPage(current - 1)}>
+                  ‹
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                  <button
+                    key={p}
+                    className={p === current ? 'is-active' : ''}
+                    onClick={() => setPage(p)}
+                  >
+                    {p}
+                  </button>
+                ))}
+                <button
+                  disabled={current === totalPages}
+                  onClick={() => setPage(current + 1)}
+                >
+                  ›
+                </button>
+              </div>
+            </div>
+          )}
         </>
       )}
     </section>

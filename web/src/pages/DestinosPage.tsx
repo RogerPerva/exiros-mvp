@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { MapPin, Map, Pencil, Trash2, RotateCcw } from 'lucide-react';
 import {
   fetchDestinations,
@@ -22,6 +22,8 @@ export default function DestinosPage() {
     editing: null,
   });
   const [confirmBaja, setConfirmBaja] = useState<Destination | null>(null);
+  const [search, setSearch] = useState('');
+  const [estado, setEstado] = useState<'' | 'activo' | 'baja'>('');
 
   const load = useCallback(async () => {
     try {
@@ -53,6 +55,22 @@ export default function DestinosPage() {
     setConfirmBaja(null);
   }
 
+  const filtered = useMemo(() => {
+    const all = destinos ?? [];
+    return all.filter((d) => {
+      if (estado === 'activo' && !d.isActive) return false;
+      if (estado === 'baja' && d.isActive) return false;
+      if (search && !d.name.toLowerCase().includes(search.toLowerCase())) return false;
+      return true;
+    });
+  }, [destinos, search, estado]);
+
+  const hasFilters = search || estado;
+  const clearFilters = () => {
+    setSearch('');
+    setEstado('');
+  };
+
   return (
     <section>
       <div className="page-head">
@@ -66,6 +84,25 @@ export default function DestinosPage() {
         >
           + Nuevo destino
         </button>
+      </div>
+
+      <div className="viajes-filters">
+        <input
+          className="viajes-search"
+          placeholder="Buscar destino por nombre…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <select value={estado} onChange={(e) => setEstado(e.target.value as '' | 'activo' | 'baja')}>
+          <option value="">Todos los estados</option>
+          <option value="activo">Activo</option>
+          <option value="baja">Baja</option>
+        </select>
+        {hasFilters && (
+          <button className="viajes-clear" onClick={clearFilters}>
+            Limpiar filtros
+          </button>
+        )}
       </div>
 
       {error && <p className="page-error">{error}</p>}
@@ -85,7 +122,7 @@ export default function DestinosPage() {
               </tr>
             </thead>
             <tbody>
-              {destinos.map((d) => (
+              {filtered.map((d) => (
                 <tr key={d.id} className={d.isActive ? '' : 'row-inactive'}>
                   <td className="viajes-folio">
                     <MapPin size={15} className="inline-icon" /> {d.name}
@@ -128,10 +165,12 @@ export default function DestinosPage() {
                   </td>
                 </tr>
               ))}
-              {destinos.length === 0 && (
+              {filtered.length === 0 && (
                 <tr>
                   <td colSpan={6} className="viajes-empty">
-                    No hay destinos. Crea el primero con "Nuevo destino".
+                    {hasFilters
+                      ? 'No hay destinos que coincidan con los filtros.'
+                      : 'No hay destinos. Crea el primero con "Nuevo destino".'}
                   </td>
                 </tr>
               )}
