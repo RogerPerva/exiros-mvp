@@ -35,8 +35,16 @@ function validateEnv(config: Record<string, unknown>): Record<string, unknown> {
     // de ataque. 100 req/min por IP por defecto; configurable por env para afinar.
     ThrottlerModule.forRoot([
       {
+        name: 'default',
         ttl: Number(process.env.THROTTLE_TTL_MS ?? 60_000),
         limit: Number(process.env.THROTTLE_LIMIT ?? 100),
+      },
+      // Cubo 'ingest': lo aprieta por tripToken el IngestThrottlerGuard en el controlador
+      // de ingesta (H-3). Aquí queda casi no-op para no afectar otras rutas.
+      {
+        name: 'ingest',
+        ttl: Number(process.env.THROTTLE_TTL_MS ?? 60_000),
+        limit: 1_000_000,
       },
     ]),
     // Sirve las fotos subidas (MVP en disco local) en /uploads/<archivo>.
