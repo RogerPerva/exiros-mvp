@@ -326,7 +326,6 @@ Cada una con: contexto, decisión, alternativas, consecuencias +/−, riesgos, e
 | ADR-008 | Docker | Solo Postgres local; no obligatorio | ✅ Aceptado |
 | ADR-009 | **Despliegue** | Túnel en dev + AWS EC2+RDS+cloudflared en demo (D2) | ✅ Aceptado (revisado 2026-06-25) |
 | ADR-010 | Estrategia de pruebas | Jest unit + e2e API; manuales en teléfono real | ✅ Aceptado |
-| ~~ADR-011~~ | ~~Uso de IA~~ | **MOVIDO:** no es ADR del proyecto. Cómo usamos IA es **metodología interna** (`~/.agents/METODOLOGIA.md` + `CONTEXT-AI.md`), no un entregable ni integración visible para el cliente/auditoría del producto. | ❌ No aplica como ADR |
 | ADR-012 | Geocerca | **Haversine en service, sin PostGIS** (spatial = upgrade path) | ✅ Aceptado (pend. confirmar) |
 
 ---
