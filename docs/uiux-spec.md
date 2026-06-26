@@ -99,12 +99,13 @@ El portal **web** (W0–W5) y la app **Android** (M1–M5) son **proyectos disti
 - Email + contraseña + "Entrar". *Error:* mensaje genérico (no filtra si el email existe).
 
 ### W1 — Mapa de tránsito *(inicio tras login)*
-- Mapa **Leaflet** con marcadores de camiones **En ruta** (último punto). Refresco cada **15–20 min** (indicar "última actualización: hh:mm").
+- Mapa **Leaflet** con marcadores de camiones (último punto). Refresco cada **15–20 min** (indicar "última actualización: hh:mm").
+- **Por defecto muestra solo viajes activos** (En ruta / Detenido); los concluidos solo aparecen si se selecciona ese estado, para no saturar el monitoreo en vivo. Los KPIs sí cuentan todos los estados.
 - Click en marcador → resumen + enlace a W3.
 - *Vacío:* "No hay viajes activos." *Error:* fallo de carga con reintento.
 
 ### W2 — Lista de viajes + export
-- Tabla con filtros: **estado, rango de fechas, destino**. Columnas clave (subconjunto de las 13). Paginación.
+- Tabla con filtros: **estado, rango de fechas, destino, búsqueda**. Columnas clave (subconjunto de las 13). **Paginación server-side** (la tabla pide solo la página visible).
 - Botón **"Exportar a Excel"** (.xlsx, 13 columnas exactas).
 - *Vacío:* "Sin viajes para los filtros." 
 

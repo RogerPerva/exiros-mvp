@@ -13,7 +13,7 @@ import {
 import { TripStatus } from '@prisma/client';
 
 /**
- * Filtros + paginación server-side de GET /api/web/trips (H-2, OpenAPI: webListTrips).
+ * Filtros + paginación server-side de GET /api/web/trips (OpenAPI: webListTrips).
  * Todo opcional; vacío = primera página sin filtrar. `transform:true` del ValidationPipe
  * convierte page/pageSize (query strings) a número vía @Type.
  */

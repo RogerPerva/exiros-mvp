@@ -1,6 +1,6 @@
 import { ingestTracker } from './ingest-throttler.guard';
 
-describe('ingestTracker (H-3: rate-limit de ingesta por tripToken)', () => {
+describe('ingestTracker (rate-limit de ingesta por tripToken)', () => {
   it('keyea por el id del viaje resuelto por el tripToken', () => {
     expect(ingestTracker({ trip: { id: 'trip-123' }, ip: '1.2.3.4' })).toBe(
       'ingest:trip:trip-123',

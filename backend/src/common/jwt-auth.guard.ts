@@ -13,7 +13,7 @@ import type { AuthUser, JwtPayload } from '../auth/jwt-payload';
 /**
  * Guard del espacio /api/web/* (ADR-007): exige `Authorization: Bearer <jwt>`.
  * Verifica firma + expiración con JwtService y, además, revalida contra BD que el
- * usuario siga existiendo y activo (H-1): un usuario dado de baja o degradado deja
+ * usuario siga existiendo y activo: un usuario dado de baja o degradado deja
  * de operar en el siguiente request, sin esperar a que expire el token. El `role`
  * adjuntado a `req.user` es el FRESCO de BD, no el del token (refleja cambios de rol).
  * Se aplica explícitamente por controlador web (no global) para no tocar la

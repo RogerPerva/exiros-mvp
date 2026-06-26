@@ -236,7 +236,7 @@ Equivalente por capa:
 
 ```bash
 # Backend (e2e exige Postgres arriba)
-cd backend && npm run lint && npm run build && npm test && npm run test:e2e
+cd backend && npm run typecheck && npm run lint && npm run build && npm test && npm run test:e2e
 # Web
 cd web && npm run lint && npm run build
 # Android
@@ -244,6 +244,7 @@ cd android && JAVA_HOME=$(/usr/libexec/java_home -v 21) ./gradlew lintDebug asse
 ```
 
 > `npm run lint` (backend) es una **verificación pura** (no auto-corrige): si falla, aplica los arreglos con `npm run lint:fix`.
+> Estos mismos gates corren en **CI** (`.github/workflows/ci.yml`) en cada push/PR (backend con Postgres de servicio; web lint+build).
 
 ### Atajos disponibles (`npm run` en la raíz)
 

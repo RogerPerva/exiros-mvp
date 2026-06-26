@@ -19,7 +19,7 @@ import { LocationsService } from './locations.service';
 /**
  * POST /api/mobile/trips/:id/locations — ingesta de ruta por lotes GZIP (3.4).
  * Guards (en orden): tripToken (Bearer) resuelve el viaje a `req.trip`; luego el
- * IngestThrottlerGuard aplica el rate-limit por tripToken (H-3). El :id de la URL debe
+ * IngestThrottlerGuard aplica el rate-limit por tripToken. El :id de la URL debe
  * coincidir con ese viaje (no se ingiere a un viaje ajeno al token). El cuerpo llega
  * comprimido (`Content-Encoding: gzip`), que body-parser infla antes de validar.
  */
@@ -30,7 +30,7 @@ export class MobileLocationsController {
 
   @Post()
   @HttpCode(200)
-  // Límite por tripToken (H-3): aprieta el cubo 'ingest' (default 60/min); configurable por env.
+  // Límite por tripToken: aprieta el cubo 'ingest' (default 60/min); configurable por env.
   @Throttle({
     ingest: {
       limit: Number(process.env.INGEST_THROTTLE_LIMIT ?? 60),

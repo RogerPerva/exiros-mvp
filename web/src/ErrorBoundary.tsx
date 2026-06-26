@@ -2,7 +2,7 @@ import { Component, type ErrorInfo, type ReactNode } from 'react';
 
 /**
  * Captura errores de render del árbol y muestra un fallback en vez de pantalla blanca
- * (QA-L02 / robustez). No reemplaza el manejo de errores de red (eso vive en api.ts).
+ * (robustez). No reemplaza el manejo de errores de red (eso vive en api.ts).
  */
 export class ErrorBoundary extends Component<
   { children: ReactNode },

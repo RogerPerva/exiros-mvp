@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 
-/** Cierra un modal/panel con la tecla Escape (accesibilidad, QA-L02). */
+/** Cierra un modal/panel con la tecla Escape (accesibilidad). */
 export function useEscapeToClose(onClose: () => void): void {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

@@ -97,8 +97,8 @@ ADMIN es **superset** de MONITOR (Functional Spec §2). "autenticado" en las tab
 ### 3.4 Viajes (monitoreo y cierre)
 | Método | Ruta | Rol | Descripción |
 | :-- | :-- | :-- | :-- |
-| GET | `/api/web/trips` | autenticado | listado con filtros `?status=&destinationId=&from=&to=` (alimenta tabla/reporte) |
-| GET | `/api/web/trips/active` | autenticado | viajes `EN_RUTA` + su **último punto** (alimenta el mapa, refresco 15–20 min) |
+| GET | `/api/web/trips` | autenticado | listado **paginado** con filtros `?status=&destinationId=&from=&to=&search=&page=&pageSize=` → `{ data, total, page, pageSize }` (alimenta la tabla) |
+| GET | `/api/web/trips/active` | autenticado | viajes con su **último punto** (alimenta el mapa, refresco 15–20 min). Incluye concluidos para pintar su punto final; el portal muestra por defecto solo los activos |
 | GET | `/api/web/trips/:id` | autenticado | detalle: campos, foto, observaciones y **ruta** (puntos) |
 | POST | `/api/web/trips/:id/close` | **solo ADMIN** | **cierre forzado por admin** (observación obligatoria) |
 
@@ -130,7 +130,7 @@ Respuesta: `200` con `Content-Type: application/vnd.openxmlformats-officedocumen
 `POST /api/mobile/trips` — **multipart/form-data** (7 campos + foto + metadato idempotente en un solo request, S-04/RN-15):
 ```
 Campos: providerNumber, providerName, folio, frontPlate, rearPlate?, destinationId, deviceId, clientRequestId
-Archivo: photo (jpg/png, 1 archivo, validar tamaño/tipo)
+Archivo: photo (1 archivo JPEG/PNG, máx 5 MB; se valida el tipo real por los bytes de cabecera, no solo el Content-Type del cliente)
 ```
 ```json
 // 201 — la misma combinación clientRequestId+deviceId puede regenerar la misma respuesta

@@ -180,10 +180,11 @@ La app recibe el snapshot de geocerca al crear el viaje y ejecuta la misma haver
 
 ## 12. Gates de calidad y convenciones
 
-- **Verde antes de cada commit** — Backend/Web: `npm run typecheck && npm run lint && npm test` (comando exacto se fija en el scaffolding). Android: `./gradlew lint testDebugUnitTest`.
+- **Verde antes de cada commit** — Backend: `npm run typecheck && npm run lint && npm run build && npm test && npm run test:e2e`. Web: `npm run lint && npm run build`. Android: `./gradlew lint testDebugUnitTest`.
+- **CI (`.github/workflows/ci.yml`):** en cada `push`/`pull_request` corre los gates de backend (con Postgres de servicio: typecheck, lint, build, test, e2e) y de web (lint, build). `main` verde deja de depender de disciplina manual.
 - Cambios visuales: no basta compilar, hay que **verlo renderizado** (captura/emulador).
 - **Commits convencionales** (`feat: fix: refactor: docs: test: chore:`); **un bloque = un commit limpio** mínimo.
-- `main` siempre verde (auditada); ramas `feat/slice-...` por bloque.
+- `main` siempre verde (auditada en CI); ramas `feat/slice-...` por bloque.
 
 ---
 

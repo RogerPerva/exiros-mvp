@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ThrottlerGuard } from '@nestjs/throttler';
 
 /**
- * Clave de rate-limit de la ingesta por tripToken (H-3). `req.trip` lo deja TripTokenGuard,
+ * Clave de rate-limit de la ingesta por tripToken. `req.trip` lo deja TripTokenGuard,
  * que resuelve el viaje a partir del Bearer token. Sin viaje resuelto cae a la IP (defensa
  * residual); en la práctica el TripTokenGuard ya rechazó la petición sin token válido.
  */
@@ -15,7 +15,7 @@ export function ingestTracker(req: {
 }
 
 /**
- * Rate-limit de ingesta keyeado por tripToken (H-3). Se aplica DESPUÉS de TripTokenGuard
+ * Rate-limit de ingesta keyeado por tripToken. Se aplica DESPUÉS de TripTokenGuard
  * (que adjunta `req.trip`), por eso vive a nivel de controlador y no como guard global.
  * Una ráfaga con un mismo token agota su propio cubo (429) con independencia de la IP; el
  * límite global por IP (ProxyThrottlerGuard) sigue vigente en paralelo.

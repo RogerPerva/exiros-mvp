@@ -1,6 +1,6 @@
 name: CI
 
-# Gates en cada push/PR (M-3): "main siempre verde" deja de depender de disciplina manual.
+# Gates en cada push/PR: "main siempre verde" deja de depender de disciplina manual.
 on:
   push:
     branches: [main]

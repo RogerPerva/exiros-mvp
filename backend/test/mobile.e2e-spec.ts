@@ -269,7 +269,7 @@ describe('Flujo móvil (e2e)', () => {
     expect(res.status).toBe(409);
   });
 
-  it('foto con MIME image/jpeg pero bytes no-imagen → 400 (magic number, M-2)', async () => {
+  it('foto con MIME image/jpeg pero bytes no-imagen → 400 (magic number)', async () => {
     const fake = Buffer.from('esto no es una imagen, solo texto plano');
     const res = await request(app.getHttpServer())
       .post('/api/mobile/trips')
@@ -609,7 +609,7 @@ describe('Flujo móvil (e2e)', () => {
     expect(res.status).toBe(401);
   });
 
-  it('usuario desactivado → su token deja de operar (401) en el siguiente request (H-1)', async () => {
+  it('usuario desactivado → su token deja de operar (401) en el siguiente request', async () => {
     const email = `e2e-inactive-${Date.now()}@exiros.com`;
     const password = 'e2e-pass-9999';
     await prisma.user.create({

@@ -24,7 +24,7 @@ const STATUS_LABEL: Record<TripStatus, string> = {
 };
 
 /** W2 Viajes (10.3): historial con filtros, tabla, paginación y "Exportar a Excel".
- *  Filtros y paginación son SERVER-SIDE (H-2): el backend devuelve solo la página pedida. */
+ *  Filtros y paginación son SERVER-SIDE: el backend devuelve solo la página pedida. */
 export default function ViajesPage() {
   const navigate = useNavigate();
   const { logout } = useAuth();

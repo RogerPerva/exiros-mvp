@@ -46,7 +46,7 @@ export default function MapaPage() {
   const proveedores = useMemo(() => [...new Set(all.map((t) => t.providerName))], [all]);
 
   // Por defecto el mapa muestra solo viajes activos; los concluidos (su punto final) solo
-  // aparecen si se selecciona ese estado, para no saturar el monitoreo en vivo (QA-M03).
+  // aparecen si se selecciona ese estado, para no saturar el monitoreo en vivo.
   const filtered = all.filter((t) => {
     const s = states.get(t.id)!;
     if (estado === '' && s === 'CONCLUIDO') return false;

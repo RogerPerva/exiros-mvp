@@ -156,7 +156,7 @@ ClosureType = { AUTO_GEOFENCE, MANUAL_OPERATOR, MANUAL_ADMIN }
 > `CREATE UNIQUE INDEX uniq_active_trip_per_device ON "Trip"("deviceId") WHERE status = 'EN_RUTA';`
 > Es defensa en profundidad: aunque el service falle, la BD garantiza la invariante.
 >
-> **Constraint de radio:** añadir en migración `CHECK ("radiusMeters" BETWEEN 100 AND 700)`; DTO/OpenAPI/UI aplican el mismo rango.
+> **Constraint de radio:** la migración define `CHECK ("radiusMeters" BETWEEN 100 AND 700)` sobre `Destination`; DTO/OpenAPI/UI aplican el mismo rango. Defensa en profundidad: aunque se intente escribir a la BD por fuera del service, el rango se respeta.
 
 ---
 

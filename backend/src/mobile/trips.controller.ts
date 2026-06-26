@@ -29,7 +29,7 @@ import { TripsService } from './trips.service';
 const UPLOADS_DIR = 'uploads';
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024; // 5 MB
 
-// Magic numbers reales (M-2): el MIME del cliente es falsificable; confirmamos que los
+// Magic numbers reales: el MIME del cliente es falsificable; confirmamos que los
 // primeros bytes del archivo correspondan a JPEG/PNG de verdad.
 function isRealImage(header: Buffer, mimetype: string): boolean {
   const isJpeg =
@@ -81,7 +81,7 @@ export class MobileTripsController {
         validators: [
           new MaxFileSizeValidator({ maxSize: MAX_PHOTO_BYTES }),
           // Filtro rápido por mimetype; el magic number se re-valida en el handler tras
-          // escribir (diskStorage no expone buffer aquí), ver isRealImage (M-2).
+          // escribir (diskStorage no expone buffer aquí), ver isRealImage.
           new FileTypeValidator({
             fileType: /^image\/(jpeg|png)$/,
             skipMagicNumbersValidation: true,
@@ -92,7 +92,7 @@ export class MobileTripsController {
     photo: Express.Multer.File,
   ) {
     // diskStorage ya escribió el archivo; re-validamos por magic number y lo descartamos
-    // si no es una imagen real (M-2: el MIME declarado por el cliente no basta).
+    // si no es una imagen real (el MIME declarado por el cliente no basta).
     const fd = openSync(photo.path, 'r');
     const header = Buffer.alloc(8);
     readSync(fd, header, 0, 8, 0);

@@ -40,7 +40,7 @@ function validateEnv(config: Record<string, unknown>): Record<string, unknown> {
         limit: Number(process.env.THROTTLE_LIMIT ?? 100),
       },
       // Cubo 'ingest': lo aprieta por tripToken el IngestThrottlerGuard en el controlador
-      // de ingesta (H-3). Aquí queda casi no-op para no afectar otras rutas.
+      // de ingesta. Aquí queda casi no-op para no afectar otras rutas.
       {
         name: 'ingest',
         ttl: Number(process.env.THROTTLE_TTL_MS ?? 60_000),

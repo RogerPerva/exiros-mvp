@@ -158,7 +158,7 @@ export async function login(email: string, password: string): Promise<AuthUser> 
   return data.user;
 }
 
-/** Página de resultados server-side (H-2). Coincide con el schema Paginated del OpenAPI. */
+/** Página de resultados server-side. Coincide con el schema Paginated del OpenAPI. */
 export interface Page<T> {
   data: T[];
   total: number;

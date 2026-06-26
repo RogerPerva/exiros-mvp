@@ -25,7 +25,7 @@ export class WebTripsController {
     private readonly closeService: TripCloseService,
   ) {}
 
-  /** W2 tabla: viajes paginados con filtros server-side (H-2). Devuelve {data,total,page,pageSize}. */
+  /** W2 tabla: viajes paginados con filtros server-side. Devuelve {data,total,page,pageSize}. */
   @Get()
   list(@Query() query: ListTripsQueryDto) {
     return this.trips.findPage(query);
