@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ApiError, fetchTrips, type Trip } from './api';
+import { ApiError, fetchActiveTrips, type Trip } from './api';
 import { useAuth } from './auth-context';
 
 // Intervalo de refresco (polling) configurable por env (`VITE_POLL_MS`). Producción: 15 min
@@ -28,7 +28,7 @@ export function useTrips(): UseTrips {
     inFlight.current = true;
     setRefreshing(true);
     try {
-      const data = await fetchTrips();
+      const data = await fetchActiveTrips();
       setTrips(data);
       setUpdatedAt(new Date());
       setError(null);

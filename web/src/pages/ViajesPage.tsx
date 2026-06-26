@@ -1,8 +1,17 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { exportReport, type ReportFilters, type Trip, type TripStatus } from '../api';
-import { useTrips } from '../useTrips';
+import {
+  ApiError,
+  exportReport,
+  fetchDestinations,
+  fetchTripsPage,
+  type Destination,
+  type ReportFilters,
+  type Trip,
+  type TripStatus,
+} from '../api';
+import { useAuth } from '../auth-context';
 import { formatDateTime } from '../format';
 import './page.css';
 import './viajes.css';
@@ -14,10 +23,11 @@ const STATUS_LABEL: Record<TripStatus, string> = {
   CONCLUIDO: 'Concluido',
 };
 
-/** W2 Viajes (10.3): historial con filtros, tabla, paginación y "Exportar a Excel". */
+/** W2 Viajes (10.3): historial con filtros, tabla, paginación y "Exportar a Excel".
+ *  Filtros y paginación son SERVER-SIDE (H-2): el backend devuelve solo la página pedida. */
 export default function ViajesPage() {
-  const { trips, error } = useTrips();
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const [search, setSearch] = useState('');
   const [estado, setEstado] = useState<'' | TripStatus>('');
   const [destino, setDestino] = useState('');
@@ -26,22 +36,59 @@ export default function ViajesPage() {
   const [page, setPage] = useState(1);
   const [exporting, setExporting] = useState(false);
 
-  const all = useMemo(() => trips ?? [], [trips]);
-  // {id, name} únicos: el filtro/export usan el id (lo que el backend espera), no el nombre.
-  const destinos = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const t of all) if (t.destination) map.set(t.destination.id, t.destination.name);
-    return [...map].map(([id, name]) => ({ id, name }));
-  }, [all]);
+  const [rows, setRows] = useState<Trip[] | null>(null);
+  const [total, setTotal] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [destinos, setDestinos] = useState<Destination[]>([]);
 
-  const filtered = useMemo(
-    () => all.filter((t) => matches(t, { search, estado, destino, from, to })),
-    [all, search, estado, destino, from, to],
-  );
+  // Catálogo de destinos para el filtro (independiente de la página de viajes cargada).
+  useEffect(() => {
+    fetchDestinations()
+      .then(setDestinos)
+      .catch(() => setDestinos([]));
+  }, []);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  // Búsqueda con debounce: evita una petición por tecla.
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedSearch(search), 350);
+    return () => clearTimeout(id);
+  }, [search]);
+
+  // Al cambiar cualquier filtro, vuelve a la primera página.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => setPage(1), [debouncedSearch, estado, destino, from, to]);
+
+  // Carga server-side de la página actual con los filtros aplicados.
+  useEffect(() => {
+    let cancelled = false;
+    fetchTripsPage({
+      page,
+      pageSize: PAGE_SIZE,
+      search: debouncedSearch || undefined,
+      status: estado || undefined,
+      destinationId: destino || undefined,
+      from: from ? `${from}T00:00:00` : undefined,
+      to: to ? `${to}T23:59:59` : undefined,
+    })
+      .then((res) => {
+        if (cancelled) return;
+        setRows(res.data);
+        setTotal(res.total);
+        setError(null);
+      })
+      .catch((e: unknown) => {
+        if (cancelled) return;
+        if (e instanceof ApiError && e.status === 401) logout();
+        else setError(String(e));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [page, debouncedSearch, estado, destino, from, to, logout]);
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const current = Math.min(page, totalPages);
-  const slice = filtered.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);
 
   const hasFilters = search || estado || destino || from || to;
   const clearFilters = () => {
@@ -86,31 +133,16 @@ export default function ViajesPage() {
           className="viajes-search"
           placeholder="Buscar folio o placa…"
           value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setPage(1);
-          }}
+          onChange={(e) => setSearch(e.target.value)}
         />
-        <select
-          value={estado}
-          onChange={(e) => {
-            setEstado(e.target.value as '' | TripStatus);
-            setPage(1);
-          }}
-        >
+        <select value={estado} onChange={(e) => setEstado(e.target.value as '' | TripStatus)}>
           <option value="">Estado: Todos</option>
           <option value="EN_RUTA">En ruta</option>
           <option value="CONCLUIDO">Concluido</option>
         </select>
         <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
         <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
-        <select
-          value={destino}
-          onChange={(e) => {
-            setDestino(e.target.value);
-            setPage(1);
-          }}
-        >
+        <select value={destino} onChange={(e) => setDestino(e.target.value)}>
           <option value="">Destino: Todos</option>
           {destinos.map((d) => (
             <option key={d.id} value={d.id}>
@@ -126,9 +158,9 @@ export default function ViajesPage() {
       </div>
 
       {error && <p className="page-error">No se pudieron cargar los viajes: {error}</p>}
-      {trips === null && !error && <p className="page-state">Cargando viajes…</p>}
+      {rows === null && !error && <p className="page-state">Cargando viajes…</p>}
 
-      {trips !== null && (
+      {rows !== null && (
         <>
           <div className="viajes-table-wrap">
             <table className="viajes-table">
@@ -144,7 +176,7 @@ export default function ViajesPage() {
                 </tr>
               </thead>
               <tbody>
-                {slice.map((t) => (
+                {rows.map((t) => (
                   <tr key={t.id} onClick={() => navigate(`/viajes/${t.id}`)}>
                     <td className="viajes-folio">{t.folio}</td>
                     <td>{t.providerName}</td>
@@ -170,7 +202,7 @@ export default function ViajesPage() {
                     </td>
                   </tr>
                 ))}
-                {slice.length === 0 && (
+                {rows.length === 0 && (
                   <tr>
                     <td colSpan={7} className="viajes-empty">
                       No hay viajes que coincidan con los filtros.
@@ -183,8 +215,8 @@ export default function ViajesPage() {
 
           <div className="viajes-foot">
             <span>
-              Mostrando {filtered.length === 0 ? 0 : (current - 1) * PAGE_SIZE + 1} a{' '}
-              {Math.min(current * PAGE_SIZE, filtered.length)} de {filtered.length} viajes
+              Mostrando {total === 0 ? 0 : (current - 1) * PAGE_SIZE + 1} a{' '}
+              {Math.min(current * PAGE_SIZE, total)} de {total} viajes
             </span>
             {totalPages > 1 && (
               <div className="viajes-pages">
@@ -210,19 +242,4 @@ export default function ViajesPage() {
       )}
     </section>
   );
-}
-
-function matches(
-  t: Trip,
-  f: { search: string; estado: '' | TripStatus; destino: string; from: string; to: string },
-): boolean {
-  if (f.estado && t.status !== f.estado) return false;
-  if (f.destino && t.destination?.id !== f.destino) return false;
-  if (f.from && t.startedAt < `${f.from}T00:00:00`) return false;
-  if (f.to && t.startedAt > `${f.to}T23:59:59`) return false;
-  if (f.search) {
-    const q = f.search.toLowerCase();
-    if (!`${t.folio} ${t.frontPlate}`.toLowerCase().includes(q)) return false;
-  }
-  return true;
 }

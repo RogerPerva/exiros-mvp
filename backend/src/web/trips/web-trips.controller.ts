@@ -5,6 +5,7 @@ import {
   HttpCode,
   Param,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { CurrentUser, JwtAuthGuard } from '../../common/jwt-auth.guard';
@@ -13,6 +14,7 @@ import type { AuthUser } from '../../auth/jwt-payload';
 import { TripCloseService } from '../../trips/trip-close.service';
 import { WebTripsService } from './web-trips.service';
 import { WebCloseTripDto } from './dto/web-close.dto';
+import { ListTripsQueryDto } from './dto/list-trips-query.dto';
 
 /** Espacio /api/web/* (portal de monitoristas), protegido con JWT (Fase 6.1). */
 @Controller('web/trips')
@@ -23,9 +25,16 @@ export class WebTripsController {
     private readonly closeService: TripCloseService,
   ) {}
 
+  /** W2 tabla: viajes paginados con filtros server-side (H-2). Devuelve {data,total,page,pageSize}. */
   @Get()
-  list() {
-    return this.trips.findAll();
+  list(@Query() query: ListTripsQueryDto) {
+    return this.trips.findPage(query);
+  }
+
+  /** W1 mapa: feed de monitoreo (arreglo con último punto). Declarado ANTES de :id. */
+  @Get('active')
+  active() {
+    return this.trips.findForMap();
   }
 
   /** Detalle de un viaje (W3): campos + cierre + foto + ruta. 404 si no existe. */

@@ -158,9 +158,45 @@ export async function login(email: string, password: string): Promise<AuthUser> 
   return data.user;
 }
 
-export async function fetchTrips(): Promise<Trip[]> {
-  const res = await fetch(`${API_BASE}/api/web/trips`, { headers: authHeaders() });
+/** Página de resultados server-side (H-2). Coincide con el schema Paginated del OpenAPI. */
+export interface Page<T> {
+  data: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+/** Filtros + paginación de la tabla de Viajes (GET /api/web/trips). Todo opcional. */
+export interface TripQuery {
+  status?: TripStatus;
+  destinationId?: string;
+  from?: string; // ISO 8601
+  to?: string; // ISO 8601
+  search?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+/** W2 tabla: viajes paginados con filtros server-side. */
+export async function fetchTripsPage(query: TripQuery = {}): Promise<Page<Trip>> {
+  const qs = new URLSearchParams();
+  if (query.status) qs.set('status', query.status);
+  if (query.destinationId) qs.set('destinationId', query.destinationId);
+  if (query.from) qs.set('from', query.from);
+  if (query.to) qs.set('to', query.to);
+  if (query.search?.trim()) qs.set('search', query.search.trim());
+  if (query.page) qs.set('page', String(query.page));
+  if (query.pageSize) qs.set('pageSize', String(query.pageSize));
+  const url = `${API_BASE}/api/web/trips${qs.toString() ? `?${qs}` : ''}`;
+  const res = await fetch(url, { headers: authHeaders() });
   await ensureOk(res, `GET /api/web/trips → ${res.status}`);
+  return res.json() as Promise<Page<Trip>>;
+}
+
+/** W1 mapa: feed de monitoreo (arreglo con último punto). Un mapa no se pagina. */
+export async function fetchActiveTrips(): Promise<Trip[]> {
+  const res = await fetch(`${API_BASE}/api/web/trips/active`, { headers: authHeaders() });
+  await ensureOk(res, `GET /api/web/trips/active → ${res.status}`);
   return res.json() as Promise<Trip[]>;
 }
 

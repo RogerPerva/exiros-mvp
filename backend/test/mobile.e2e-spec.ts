@@ -269,13 +269,21 @@ describe('Flujo móvil (e2e)', () => {
     expect(res.status).toBe(409);
   });
 
-  it('GET /api/web/trips → 200, el viaje aparece con destino y sin ubicación aún', async () => {
+  it('GET /api/web/trips → 200 paginado {data,total,page,pageSize}; el viaje aparece sin ubicación aún', async () => {
     const res = await request(app.getHttpServer())
       .get('/api/web/trips')
       .set('Authorization', `Bearer ${adminToken}`);
-    const body = res.body as WebTrip[];
+    const body = res.body as {
+      data: WebTrip[];
+      total: number;
+      page: number;
+      pageSize: number;
+    };
     expect(res.status).toBe(200);
-    const trip = body.find((t) => t.id === tripId);
+    expect(Array.isArray(body.data)).toBe(true);
+    expect(body.page).toBe(1);
+    expect(typeof body.total).toBe('number');
+    const trip = body.data.find((t) => t.id === tripId);
     expect(trip).toBeDefined();
     expect(trip?.destination?.name).toBe('E2E Destino');
     expect(trip?.lastLocation).toBeNull();
@@ -347,10 +355,40 @@ describe('Flujo móvil (e2e)', () => {
     const res = await request(app.getHttpServer())
       .get('/api/web/trips')
       .set('Authorization', `Bearer ${adminToken}`);
-    const body = res.body as WebTrip[];
-    const trip = body.find((t) => t.id === tripId);
+    const body = res.body as { data: WebTrip[] };
+    const trip = body.data.find((t) => t.id === tripId);
     expect(trip?.lastLocation).not.toBeNull();
     expect(trip?.lastLocation?.lat).toBeCloseTo(25.67, 2);
+  });
+
+  it('GET /api/web/trips?status=EN_RUTA filtra server-side (no aparece un concluido)', async () => {
+    // Crea un viaje y ciérralo (admin) para tener un CONCLUIDO que el filtro debe excluir.
+    const created = (await postTrip({
+      clientRequestId: `crid-filter-${Date.now()}`,
+      deviceId: `dev-filter-${Date.now()}`,
+    }).expect(201)) as { body: TripResp };
+    await request(app.getHttpServer())
+      .post(`/api/web/trips/${created.body.tripId}/close`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ observations: 'cierre para test de filtro' })
+      .expect(200);
+
+    const res = await request(app.getHttpServer())
+      .get('/api/web/trips?status=EN_RUTA')
+      .set('Authorization', `Bearer ${adminToken}`);
+    const body = res.body as { data: WebTrip[] };
+    expect(res.status).toBe(200);
+    expect(body.data.some((t) => t.id === created.body.tripId)).toBe(false);
+  });
+
+  it('GET /api/web/trips/active → arreglo (feed del mapa) con el viaje activo', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/api/web/trips/active')
+      .set('Authorization', `Bearer ${adminToken}`);
+    const body = res.body as WebTrip[];
+    expect(res.status).toBe(200);
+    expect(Array.isArray(body)).toBe(true);
+    expect(body.some((t) => t.id === tripId)).toBe(true);
   });
 
   // --- Cierre automático por geocerca (4.1). El destino e2e está en (25.6, -100.3) r=300 m. ---
