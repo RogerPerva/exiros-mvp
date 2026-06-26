@@ -98,6 +98,9 @@ interface TripDao {
     @Query("SELECT * FROM location_queue WHERE tripId = :tripId ORDER BY recordedAt DESC, id DESC LIMIT 1")
     fun observeLastLocation(tripId: String): Flow<LocationEntity?>
 
+    @Query("SELECT * FROM location_queue WHERE tripId = :tripId ORDER BY recordedAt DESC, id DESC LIMIT 1")
+    suspend fun getLastLocation(tripId: String): LocationEntity?
+
     // Puntos aún sin subir: 0 = la cola está "al día"; >0 = hay envíos pendientes.
     @Query("SELECT COUNT(*) FROM location_queue WHERE tripId = :tripId AND sent = 0")
     fun observeUnsentCount(tripId: String): Flow<Int>

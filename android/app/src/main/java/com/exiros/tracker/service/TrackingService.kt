@@ -118,10 +118,18 @@ class TrackingService : Service() {
     }
 
     /** Encola el fix y, si cae cerca de la geocerca, dispara un sync prioritario (sin detener
-     *  GPS) para que el backend evalúe el cierre cuanto antes (anticipación de llegada, 4.1). */
+     *  GPS) para que el backend evalúe el cierre cuanto antes (anticipación de llegada, 4.1).
+     *
+     *  Si el camión sigue en el mismo sitio, saltamos el punto para no refrescar `lastLocation`
+     *  ni gastar datos. La excepción es la geocerca: ese punto sí debe llegar al backend para
+     *  permitir el cierre automático. */
     private fun handleFix(fix: Fix) {
         val id = tripId ?: return
+        val trip = activeTrip
         scope.launch {
+            val nearDestination = trip?.let { isNearDestination(fix, it) } ?: false
+            if (!nearDestination && isSameStoppedPosition(id, fix)) return@launch
+
             repo.recordPoint(id, fix.lat, fix.lng, fix.accuracyMeters, fix.recordedAt)
             // Primer punto del viaje (el origen): envíalo de inmediato para que el portal
             // muestre el inicio sin esperar el ciclo de ~15 min. Una sola vez por servicio.
@@ -129,16 +137,27 @@ class TrackingService : Service() {
                 firstPointSynced = true
                 SyncScheduler.syncNow(this@TrackingService)
             }
-        }
 
-        val trip = activeTrip ?: return
-        if (arrivalSynced) return
-        val out = FloatArray(1)
-        Location.distanceBetween(fix.lat, fix.lng, trip.centerLat, trip.centerLng, out)
-        if (out[0] <= trip.radiusMeters + ARRIVAL_MARGIN_M) {
-            arrivalSynced = true
-            SyncScheduler.syncNow(this)
+            if (nearDestination && !arrivalSynced) {
+                arrivalSynced = true
+                SyncScheduler.syncNow(this@TrackingService)
+            }
         }
+    }
+
+    private suspend fun isSameStoppedPosition(tripId: String, fix: Fix): Boolean {
+        val last = repo.lastLocationSnapshot(tripId) ?: return false
+        return distanceMeters(fix.lat, fix.lng, last.lat, last.lng) <= STATIONARY_SKIP_DISTANCE_M
+    }
+
+    private fun isNearDestination(fix: Fix, trip: ActiveTripEntity): Boolean =
+        distanceMeters(fix.lat, fix.lng, trip.centerLat, trip.centerLng) <=
+            trip.radiusMeters + ARRIVAL_MARGIN_M
+
+    private fun distanceMeters(fromLat: Double, fromLng: Double, toLat: Double, toLng: Double): Float {
+        val out = FloatArray(1)
+        Location.distanceBetween(fromLat, fromLng, toLat, toLng, out)
+        return out[0]
     }
 
     /** Cambia la cadencia según el camión esté detenido (STILL) o en marcha. */
@@ -221,6 +240,7 @@ class TrackingService : Service() {
         private const val CHANNEL_ID = "tracking"
         private const val NOTIF_ID = 1
         private const val ARRIVAL_MARGIN_M = 100f // margen sobre el radio para anticipar llegada
+        private const val STATIONARY_SKIP_DISTANCE_M = 50f // jitter GPS: mismo sitio, no enviar
 
         const val ACTION_START = "com.exiros.tracker.START"
         const val ACTION_STOP = "com.exiros.tracker.STOP"

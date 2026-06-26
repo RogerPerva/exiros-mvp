@@ -20,6 +20,8 @@ class TripRepository(context: Context) {
 
     fun lastLocation(tripId: String): Flow<LocationEntity?> = dao.observeLastLocation(tripId)
 
+    suspend fun lastLocationSnapshot(tripId: String): LocationEntity? = dao.getLastLocation(tripId)
+
     /** Puntos en cola sin subir (0 = al día). */
     fun unsentCount(tripId: String): Flow<Int> = dao.observeUnsentCount(tripId)
 
