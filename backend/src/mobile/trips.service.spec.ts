@@ -48,6 +48,8 @@ function makeTrip(dto: CreateTripDto, overrides: Partial<Trip> = {}): Trip {
     observations: null,
     closedById: null,
     closeRequestId: null,
+    endLat: null,
+    endLng: null,
     lastLocationAt: null,
     createdAt: new Date('2026-06-22T10:00:00Z'),
     updatedAt: new Date('2026-06-22T10:00:00Z'),

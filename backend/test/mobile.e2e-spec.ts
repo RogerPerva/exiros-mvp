@@ -852,13 +852,13 @@ describe('Flujo móvil (e2e)', () => {
       .get('/api/web/reports/export')
       .set('Authorization', `Bearer ${adminToken}`)
       .buffer()
-      .parse(binaryParser);
+      .parse(binaryParser as unknown as Parameters<request.Test['parse']>[0]);
 
     expect(res.status).toBe(200);
     expect(res.headers['content-type']).toContain('spreadsheetml.sheet');
 
     const wb = new Workbook();
-    await wb.xlsx.load(res.body as Buffer);
+    await wb.xlsx.load(res.body);
     const ws = wb.worksheets[0];
     // row.values es 1-indexado (índice 0 = undefined) → slice(1).
     const headers = (ws.getRow(1).values as unknown[]).slice(1);
@@ -871,11 +871,11 @@ describe('Flujo móvil (e2e)', () => {
       .get('/api/web/reports/export?status=CONCLUIDO')
       .set('Authorization', `Bearer ${adminToken}`)
       .buffer()
-      .parse(binaryParser);
+      .parse(binaryParser as unknown as Parameters<request.Test['parse']>[0]);
 
     expect(res.status).toBe(200);
     const wb = new Workbook();
-    await wb.xlsx.load(res.body as Buffer);
+    await wb.xlsx.load(res.body);
     const ws = wb.worksheets[0];
     // Col 11 = Estatus del Viaje. Toda fila de datos debe decir "Concluido".
     const statuses: string[] = [];
