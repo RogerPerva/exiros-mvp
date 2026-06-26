@@ -13,7 +13,7 @@ const PHOTO = '/uploads/foto.jpg';
 
 function makeDto(overrides: Partial<CreateTripDto> = {}): CreateTripDto {
   return {
-    providerNumber: 'PRV-001',
+    providerNumber: '1001',
     providerName: 'Transporte del Norte SA',
     folio: '100294',
     frontPlate: 'ABC-12-34',

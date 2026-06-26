@@ -14,6 +14,7 @@ import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
+import com.exiros.tracker.BuildConfig
 import com.exiros.tracker.MainActivity
 import com.exiros.tracker.R
 import com.exiros.tracker.data.ActiveTripEntity
@@ -24,8 +25,11 @@ import com.exiros.tracker.data.TripRepository
 import com.exiros.tracker.sync.SyncScheduler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
@@ -44,6 +48,12 @@ class TrackingService : Service() {
     private var activeTrip: ActiveTripEntity? = null
     private var hibernating = false
     private var arrivalSynced = false // un solo sync prioritario al anticipar la llegada
+    private var firstPointSynced = false // envío inmediato del primer punto (origen del viaje)
+
+    // Modo demo (BuildConfig.DEMO_TRACKING_SECONDS > 0): captura+envío cada N seg, sin filtro de
+    // distancia ni hibernación, para VER el camión moverse en vivo. 0 = producción (sin cambio).
+    private val demoSeconds = BuildConfig.DEMO_TRACKING_SECONDS
+    private var demoSyncJob: Job? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -84,7 +94,26 @@ class TrackingService : Service() {
             tripId = trip.tripId
             activeTrip = trip
             updateNotification(getString(R.string.tracking_active, trip.destinationName))
-            capture.start(if (hibernating) LocationCapture.HIBERNATING else LocationCapture.MOVING, ::handleFix)
+            capture.start(captureConfig(), ::handleFix)
+            if (demoSeconds > 0) startDemoSyncLoop()
+        }
+    }
+
+    /** Config de captura: en demo, rápida y sin filtro; en producción, MOVING/HIBERNATING. */
+    private fun captureConfig(): CaptureConfig = when {
+        demoSeconds > 0 -> CaptureConfig(intervalMs = demoSeconds * 1000L, minDistanceMeters = 0f)
+        hibernating -> LocationCapture.HIBERNATING
+        else -> LocationCapture.MOVING
+    }
+
+    /** Solo en demo: fuerza un envío cada N seg para que el portal vea el avance en vivo. */
+    private fun startDemoSyncLoop() {
+        if (demoSyncJob?.isActive == true) return
+        demoSyncJob = scope.launch {
+            while (isActive) {
+                delay(demoSeconds * 1000L)
+                SyncScheduler.syncNow(this@TrackingService)
+            }
         }
     }
 
@@ -92,7 +121,15 @@ class TrackingService : Service() {
      *  GPS) para que el backend evalúe el cierre cuanto antes (anticipación de llegada, 4.1). */
     private fun handleFix(fix: Fix) {
         val id = tripId ?: return
-        scope.launch { repo.recordPoint(id, fix.lat, fix.lng, fix.accuracyMeters, fix.recordedAt) }
+        scope.launch {
+            repo.recordPoint(id, fix.lat, fix.lng, fix.accuracyMeters, fix.recordedAt)
+            // Primer punto del viaje (el origen): envíalo de inmediato para que el portal
+            // muestre el inicio sin esperar el ciclo de ~15 min. Una sola vez por servicio.
+            if (!firstPointSynced) {
+                firstPointSynced = true
+                SyncScheduler.syncNow(this@TrackingService)
+            }
+        }
 
         val trip = activeTrip ?: return
         if (arrivalSynced) return
@@ -106,6 +143,7 @@ class TrackingService : Service() {
 
     /** Cambia la cadencia según el camión esté detenido (STILL) o en marcha. */
     private fun applyHibernation(still: Boolean) {
+        if (demoSeconds > 0) return // en demo no hibernamos: captura constante para ver el avance
         if (still == hibernating) return
         hibernating = still
         tripId ?: return
@@ -117,6 +155,7 @@ class TrackingService : Service() {
     }
 
     private fun stopTracking() {
+        demoSyncJob?.cancel()
         capture.stop()
         ActivityTransitionReceiver.unregister(this)
         SyncScheduler.cancel(this)
@@ -125,6 +164,7 @@ class TrackingService : Service() {
     }
 
     override fun onDestroy() {
+        demoSyncJob?.cancel()
         capture.stop()
         ActivityTransitionReceiver.unregister(this)
         scope.cancel()

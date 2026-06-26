@@ -47,6 +47,10 @@ android {
             // `-PEXIROS_DEV_AIDS=true` al ensamblar el debug.
             val devAids = (project.findProperty("EXIROS_DEV_AIDS") as String?)?.toBoolean() ?: false
             buildConfigField("Boolean", "DEV_AIDS", "$devAids")
+            // Modo demo: captura+envío cada N seg (en vez de lotes 15 min) para VER el camión
+            // moverse en vivo. 0 = producción (sin cambio). Activar con `-PEXIROS_DEMO_SECONDS=15`.
+            val demoSec = (project.findProperty("EXIROS_DEMO_SECONDS") as String?)?.toIntOrNull() ?: 0
+            buildConfigField("int", "DEMO_TRACKING_SECONDS", "$demoSec")
         }
         release {
             isMinifyEnabled = false
@@ -62,6 +66,9 @@ android {
             buildConfigField("String", "APP_KEY", "\"$appKey\"")
             // Las ayudas de desarrollo nunca existen en producción.
             buildConfigField("Boolean", "DEV_AIDS", "false")
+            // Modo demo (ver debug). 0 = producción; para una demo en release: `-PEXIROS_DEMO_SECONDS=15`.
+            val demoSec = (project.findProperty("EXIROS_DEMO_SECONDS") as String?)?.toIntOrNull() ?: 0
+            buildConfigField("int", "DEMO_TRACKING_SECONDS", "$demoSec")
         }
     }
 

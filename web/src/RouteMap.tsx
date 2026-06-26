@@ -7,13 +7,25 @@ import { DEFAULT_CENTER } from './constants';
 export default function RouteMap({ trip }: { trip: TripDetail }) {
   const pts = trip.route.map((p) => [p.lat, p.lng] as [number, number]);
   const dest = trip.destination;
-  const center: [number, number] = pts[0] ??
-    (dest ? [dest.centerLat, dest.centerLng] : DEFAULT_CENTER);
   const start = pts[0];
   const end = pts[pts.length - 1];
 
+  // Encuadre: con ≥2 puntos ajusta el mapa a los límites de la ruta (con margen y tope de
+  // zoom para no acercar de más); con 1 punto se acerca a él; sin puntos centra en el destino.
+  const mapProps =
+    pts.length >= 2
+      ? { bounds: pts, boundsOptions: { padding: [30, 30] as [number, number], maxZoom: 15 } }
+      : pts.length === 1
+        ? { center: pts[0], zoom: 15 }
+        : {
+            center: (dest
+              ? [dest.centerLat, dest.centerLng]
+              : DEFAULT_CENTER) as [number, number],
+            zoom: dest ? 13 : 7,
+          };
+
   return (
-    <MapContainer center={center} zoom={7} style={{ height: '100%', width: '100%' }}>
+    <MapContainer {...mapProps} style={{ height: '100%', width: '100%' }}>
       <TileLayer
         attribution="&copy; OpenStreetMap"
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

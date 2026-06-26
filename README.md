@@ -108,9 +108,15 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
   ```bash
   ./gradlew assembleRelease -PEXIROS_API_URL=https://api.tu-dominio.com -PEXIROS_APP_KEY=<clave-prod>
   ```
+- **Modo demo (ver el camión moverse en vivo):** añade `-PEXIROS_DEMO_SECONDS=15` → la app captura y envía cada 15 s (sin filtro de distancia ni hibernación) en vez de los lotes de 15 min. **Sin el parámetro (o `=0`) el comportamiento es el de producción** (batería intacta). Baja también el refresco del portal con `VITE_POLL_MS=10000` en `web/.env.local`.
+  ```bash
+  ./gradlew assembleRelease -PEXIROS_API_URL=https://... -PEXIROS_APP_KEY=... -PEXIROS_DEMO_SECONDS=15
+  ```
+  > ⚠️ Gradle no regenera `BuildConfig` al cambiar un `-P`. Si cambias `DEMO_SECONDS` (o la URL/key), antepón `clean`: `./gradlew clean assembleRelease -P...`.
 
 > ⚠️ Si el portal da 500 o el login falla, casi siempre el contenedor de Postgres se cayó (la máquina durmió): revisa `docker ps` y re-corre el paso 1, luego reinicia el backend.
 > ⚠️ Tras tocar el backend, **reconstruir + reiniciar** `node dist/main.js` (un endpoint nuevo da 404 si corre el `dist` viejo); en `start:dev` recarga solo.
+> ⚠️ **Emulador (macOS) atascado:** si se queda en el logo de Google → `adb reboot` (no borra datos). Si la app no resuelve el túnel (DNS) tras un reinicio → arranca en frío con `emulator -avd <AVD> -dns-server 8.8.8.8,8.8.4.4 -no-snapshot-load`.
 
 ---
 
@@ -192,13 +198,13 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 ## 🎬 Guion de demo (cierre automático por geocerca)
 
-Con el sistema arriba y un destino activo (p. ej. *Patio Comprador Monterrey*, centro `25.6866,-100.3161`, radio 300 m, creado desde el portal → Destinos):
+Con el sistema arriba y un destino activo (p. ej. *Patio Comprador Veracruz*, centro `19.1738,-96.1342`, radio 300 m, creado desde el portal → Destinos):
 
 1. **App (emulador):** llena el formulario → elige el destino → **Iniciar viaje**. (Acepta permisos de ubicación.)
 2. **Portal → Viajes/Mapa:** el viaje aparece **En ruta**.
 3. **Reproduce la ruta** (otra terminal): mueve el GPS del emulador hacia la geocerca.
    ```bash
-   ./scripts/route-sim.sh --to 25.6866,-100.3161 --radius 300
+   ./scripts/route-sim.sh --to 19.1738,-96.1342 --radius 300
    ```
 4. Al entrar al radio, el backend cierra el viaje solo (`AUTO_GEOFENCE`):
    - **Portal → Viajes:** pasa a **Concluido**.
@@ -207,7 +213,7 @@ Con el sistema arriba y un destino activo (p. ej. *Patio Comprador Monterrey*, c
 
 > **Reset entre corridas:** si un viaje queda colgado en *En ruta*, ciérralo en la BD:
 > `docker exec exiros-postgres psql -U exiros -d exiros -c "update \"Trip\" set status='CONCLUIDO' where status='EN_RUTA';"`
-> Antes de cada corrida, mueve el GPS fuera de la geocerca para que no cierre al instante: `adb emu geo fix -100.3300 25.7005`.
+> Antes de cada corrida, mueve el GPS fuera de la geocerca para que no cierre al instante: `adb emu geo fix -96.1500 19.1900`.
 
 **Túnel para teléfono físico / red externa** (sin nube, sin cuenta):
 

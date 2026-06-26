@@ -90,7 +90,7 @@
   flex-direction: column;
 }
 .detalle-map {
-  height: 480px;
+  height: 504px; /* 480px + 5% */
   border-radius: 8px;
   overflow: hidden;
 }
