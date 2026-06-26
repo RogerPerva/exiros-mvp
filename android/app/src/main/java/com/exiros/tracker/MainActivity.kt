@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -45,6 +46,7 @@ import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -66,6 +68,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import com.exiros.tracker.data.ActiveTripEntity
 import com.exiros.tracker.data.ApiClient
 import com.exiros.tracker.data.Destination
@@ -86,6 +89,7 @@ import com.exiros.tracker.ui.TextPrimary
 import com.exiros.tracker.ui.TextSecondary
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import java.io.File
 import java.util.UUID
 
 class MainActivity : ComponentActivity() {
@@ -299,6 +303,11 @@ fun TripFormScreen(
     var message by remember { mutableStateOf<String?>(null) }
     var isError by remember { mutableStateOf(false) }
 
+    // Selector de fuente de la foto: galeria (Photo Picker) o camara (app del sistema via intent).
+    var showPhotoSourceDialog by remember { mutableStateOf(false) }
+    // Uri del archivo temporal donde la camara escribe; se lee al volver con exito.
+    var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
+
     val photoPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia()
     ) { uri: Uri? ->
@@ -307,6 +316,27 @@ fun TripFormScreen(
             photoBytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
             photoName = "carga.jpg"
         }
+    }
+
+    // TakePicture delega en la app de camara y devuelve true si se guardo la foto en pendingCameraUri.
+    val cameraLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.TakePicture()
+    ) { success: Boolean ->
+        if (success) {
+            pendingCameraUri?.let { uri ->
+                photoMime = "image/jpeg"
+                photoBytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                photoName = "carga.jpg"
+            }
+        }
+    }
+
+    // Crea un archivo temporal en cache, lo expone via FileProvider y abre la camara.
+    fun launchCamera() {
+        val file = File.createTempFile("carga_", ".jpg", context.cacheDir)
+        val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+        pendingCameraUri = uri
+        cameraLauncher.launch(uri)
     }
 
     LaunchedEffect(Unit) {
@@ -370,12 +400,30 @@ fun TripFormScreen(
         // Caja de foto de la carga
         PhotoBox(
             photoName = photoName,
-            onClick = {
-                photoPicker.launch(
-                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                )
-            },
+            onClick = { showPhotoSourceDialog = true },
         )
+
+        if (showPhotoSourceDialog) {
+            AlertDialog(
+                onDismissRequest = { showPhotoSourceDialog = false },
+                title = { Text("Foto de la carga") },
+                text = { Text("¿Cómo quieres agregar la foto?") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showPhotoSourceDialog = false
+                        launchCamera()
+                    }) { Text("Tomar foto") }
+                },
+                dismissButton = {
+                    TextButton(onClick = {
+                        showPhotoSourceDialog = false
+                        photoPicker.launch(
+                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                        )
+                    }) { Text("Elegir de galería") }
+                },
+            )
+        }
 
         // Destino (label arriba + dropdown)
         Column {

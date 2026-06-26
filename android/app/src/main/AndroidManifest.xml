@@ -38,6 +38,17 @@
         <receiver
             android:name=".service.ActivityTransitionReceiver"
             android:exported="false" />
+
+        <!-- Comparte el archivo temporal donde la app de camara escribe la foto de la carga. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 
 </manifest>
