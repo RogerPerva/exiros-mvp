@@ -1,0 +1,64 @@
+name: CI
+
+# Gates en cada push/PR (M-3): "main siempre verde" deja de depender de disciplina manual.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: exiros
+          POSTGRES_PASSWORD: exiros_dev
+          POSTGRES_DB: exiros
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U exiros -d exiros"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://exiros:exiros_dev@localhost:5432/exiros?schema=public
+      APP_KEY: ci-app-key
+      JWT_SECRET: ci-jwt-secret
+      TRIP_TOKEN_SECRET: ci-trip-token-secret
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npx prisma migrate deploy
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run build
+      - run: npm test
+      - run: npm run test:e2e
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
