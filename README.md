@@ -179,20 +179,57 @@ Abre **http://localhost:5173** → login **`admin@exiros.com` / `admin1234`**.
 
 ### App móvil — Android en Windows
 
+Primero, arranca el emulador (común a las dos opciones):
+
 ```powershell
 $env:ANDROID_HOME = "$env:LOCALAPPDATA\Android\Sdk"
 $env:Path = "$env:ANDROID_HOME\emulator;$env:ANDROID_HOME\platform-tools;$env:Path"
 
-emulator -list-avds                                    # ver AVDs
+emulator -list-avds                                    # ver AVDs (crea uno desde Android Studio si no hay)
 emulator -avd <tu-AVD> -no-snapshot-save               # arrancar el emulador
 
+adb wait-for-device                                    # espera a que el emulador aparezca
+adb shell getprop sys.boot_completed                   # repite hasta que imprima "1" (boot terminado)
+```
+
+> Si arrancas en frío y la app no resuelve un túnel/URL externa (problema de DNS), añade `-dns-server 8.8.8.8,8.8.4.4` al comando del emulador.
+
+#### Opción A — contra el backend LOCAL (build *debug*, recomendado para evaluar)
+
+Requiere el stack local arriba (terminales 1-3 de arriba). El build *debug* ya apunta al host en `http://10.0.2.2:3000`:
+
+```powershell
 cd android
 $env:JAVA_HOME = "C:\Program Files\Java\jdk-21"        # ruta de tu JDK 21
 .\gradlew assembleDebug
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
-> El build *debug* alcanza el backend del host en `http://10.0.2.2:3000` (ya configurado). Si en el primer boot el emulador muestra "Process system isn't responding", da **Wait** (es el sistema asentándose, no la app).
+> Si en el primer boot el emulador muestra "Process system isn't responding", da **Wait** (es el sistema asentándose, no la app).
+
+#### Opción B — contra la EC2 (build *release*, para la demo en vivo)
+
+No necesita backend local: la app pega al backend desplegado en la EC2 vía la URL HTTPS del túnel cloudflared. Necesitas dos datos **que NO van en este repo** (el dueño de la demo los provee):
+
+- `<url-EC2>` = la URL del túnel (la misma que usa la web; vive en `web/.env.local` → `VITE_API_URL`). Es **efímera**: valida que esté viva con `curl <url-EC2>/api/health` → debe responder `{"status":"ok",...}`.
+- `<APP_KEY>` = la clave estática del bootstrap móvil que valida la EC2 (secreto del servidor, no el `dev-app-key-...` del `.env.example`).
+
+```powershell
+cd android
+$env:JAVA_HOME = "C:\Program Files\Java\jdk-21"
+# 'clean' es obligatorio: Gradle no regenera BuildConfig al cambiar un -P (URL/key/demo)
+.\gradlew clean assembleRelease -PEXIROS_API_URL=<url-EC2> -PEXIROS_APP_KEY=<APP_KEY> -PEXIROS_DEMO_SECONDS=15
+
+# ⚠️ IMPORTANTE: si el emulador ya tiene instalado el build debug, DESINSTÁLALO primero.
+# El release va firmado con otra llave (release keystore) → instalar encima del debug
+# falla en silencio con "INSTALL_FAILED_UPDATE_INCOMPATIBLE: signatures do not match"
+# y parece que "no conecta" cuando en realidad sigue corriendo el debug (10.0.2.2:3000).
+adb uninstall com.exiros.tracker        # ignora el error si no estaba instalado
+adb install app/build/outputs/apk/release/app-release.apk
+```
+
+> `-PEXIROS_DEMO_SECONDS=15` = modo demo (captura/envía cada 15 s para ver el camión moverse). **Quítalo (o `=0`) para el comportamiento de producción.** Baja también el refresco del portal con `VITE_POLL_MS=10000` en `web/.env.local`.
+> **Verificación de que conectó a la EC2:** en el formulario "Iniciar viaje", el desplegable **Destino** debe listar los destinos creados en la EC2 (no los locales). Si da `fail to connect ...:3000`, tienes el build *debug* instalado — repite el `adb uninstall` + install del release.
 
 ---
 
