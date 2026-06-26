@@ -45,9 +45,13 @@ export default function MapaPage() {
   );
   const proveedores = useMemo(() => [...new Set(all.map((t) => t.providerName))], [all]);
 
-  const filtered = all.filter((t) =>
-    matches(t, states.get(t.id)!, { search, estado, destino, proveedor }),
-  );
+  // Por defecto el mapa muestra solo viajes activos; los concluidos (su punto final) solo
+  // aparecen si se selecciona ese estado, para no saturar el monitoreo en vivo (QA-M03).
+  const filtered = all.filter((t) => {
+    const s = states.get(t.id)!;
+    if (estado === '' && s === 'CONCLUIDO') return false;
+    return matches(t, s, { search, estado, destino, proveedor });
+  });
   // "Viajes visibles en el mapa" = todo viaje con ubicación (lo que TripsMap realmente pinta):
   // activos en su último punto y concluidos en su punto final.
   const visible = filtered.filter((t) => t.lastLocation);

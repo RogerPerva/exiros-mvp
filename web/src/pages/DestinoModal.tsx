@@ -16,6 +16,7 @@ import {
 } from '../api';
 import { DEFAULT_CENTER } from '../constants';
 import { sanitizeLabel } from '../validation';
+import { useEscapeToClose } from '../useEscapeToClose';
 import './destinos.css';
 
 const RADIUS_MIN = 100;
@@ -47,6 +48,9 @@ export default function DestinoModal({
   const [radius, setRadius] = useState(destino?.radiusMeters ?? 100);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  useEscapeToClose(onClose);
+
+  const title = destino ? 'Editar destino' : 'Nuevo destino';
 
   async function onSave() {
     if (!name.trim()) {
@@ -78,10 +82,16 @@ export default function DestinoModal({
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-panel" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="modal-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="modal-head">
-          <h2>{destino ? 'Editar destino' : 'Nuevo destino'}</h2>
-          <button className="modal-x" onClick={onClose}>
+          <h2>{title}</h2>
+          <button className="modal-x" aria-label="Cerrar" onClick={onClose}>
             <X size={18} />
           </button>
         </div>

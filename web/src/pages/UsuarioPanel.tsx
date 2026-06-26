@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X, Eye, EyeOff } from 'lucide-react';
 import { createUser, updateUser, type Role, type StaffUser } from '../api';
 import { sanitizeName, isValidEmail } from '../validation';
+import { useEscapeToClose } from '../useEscapeToClose';
 import './usuarios.css';
 
 const ROLES: { value: Role; label: string }[] = [
@@ -27,6 +28,9 @@ export default function UsuarioPanel({
   const [showPass, setShowPass] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  useEscapeToClose(onClose);
+
+  const title = editing ? 'Editar usuario' : 'Nuevo usuario';
 
   async function onSave() {
     if (!name.trim() || !role || (!editing && (!email.trim() || password.length < 8))) {
@@ -56,10 +60,16 @@ export default function UsuarioPanel({
 
   return (
     <div className="panel-overlay" onClick={onClose}>
-      <aside className="panel" onClick={(e) => e.stopPropagation()}>
+      <aside
+        className="panel"
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="modal-head">
-          <h2>{editing ? 'Editar usuario' : 'Nuevo usuario'}</h2>
-          <button className="modal-x" onClick={onClose}>
+          <h2>{title}</h2>
+          <button className="modal-x" aria-label="Cerrar" onClick={onClose}>
             <X size={18} />
           </button>
         </div>
