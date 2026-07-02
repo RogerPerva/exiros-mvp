@@ -16,7 +16,9 @@ services:
       retries: 10
 
   backend:
-    image: rpereziwa/exiros-backend:latest
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
     container_name: exiros-backend
     restart: unless-stopped
     depends_on:
@@ -37,7 +39,11 @@ services:
       - "3000:3000"
 
   web:
-    image: rpereziwa/exiros-web:latest
+    build:
+      context: ../web
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-}
     container_name: exiros-web
     restart: unless-stopped
     depends_on:
