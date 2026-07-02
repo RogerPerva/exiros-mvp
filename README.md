@@ -297,6 +297,66 @@ cd android && JAVA_HOME=$(/usr/libexec/java_home -v 21) ./gradlew lintDebug asse
 
 ---
 
+## 🔧 Variables de entorno
+
+Cada componente tiene su `.env.example` versionado como plantilla; el `.env`/`.env.local` real
+queda fuera del repo. Los valores `dev-*-cambia-en-prod` son placeholders.
+
+### Backend — `backend/.env`
+
+Requeridas (arranque *fail-fast* si falta alguna): `DATABASE_URL`, `JWT_SECRET`, `TRIP_TOKEN_SECRET`, `APP_KEY`.
+
+| Variable | Oblig. | Default | Descripción |
+|----------|:------:|---------|-------------|
+| `DATABASE_URL` | ✅ | — | Cadena de conexión Postgres que usa Prisma (`postgresql://user:pass@host:5432/db?schema=public`). |
+| `APP_KEY` | ✅ | — | Clave estática `X-App-Key` del bootstrap móvil (ADR-007, débil por diseño). **Cambiar en prod.** |
+| `TRIP_TOKEN_SECRET` | ✅ | — | Secreto de servidor para derivar el `tripToken` por HMAC. **Cambiar en prod.** |
+| `JWT_SECRET` | ✅ | — | Secreto que firma el JWT del staff web. **Cambiar en prod.** |
+| `JWT_EXPIRES_IN` | — | `12h` | Vigencia del JWT web (formato de `jsonwebtoken`, p. ej. `12h`, `7d`). |
+| `SEED_ADMIN_EMAIL` | — | `admin@exiros.com` | Email del admin que crea `prisma db seed`. |
+| `SEED_ADMIN_PASSWORD` | — | `admin1234` | Contraseña del admin sembrado. **Cambiar en prod.** |
+| `SEED_ADMIN_NAME` | — | `Admin Exiros` | Nombre del admin sembrado. |
+| `PORT` | — | `3000` | Puerto HTTP del backend. |
+| `WEB_ORIGIN` | — | *(refleja cualquier origen)* | CORS: origen permitido del portal. En prod, el dominio exacto (p. ej. `https://portal.exiros.com`). |
+| `THROTTLE_TTL_MS` | — | `60000` | Ventana (ms) del rate-limit **global** por IP. |
+| `THROTTLE_LIMIT` | — | `100` | Tope de peticiones por IP por ventana (global). |
+| `INGEST_THROTTLE_TTL_MS` | — | `60000` | Ventana (ms) del rate-limit de **ingesta móvil** (`/api/mobile/locations`), por `tripToken`. |
+| `INGEST_THROTTLE_LIMIT` | — | `60` | Tope de lotes de ingesta por ventana, por viaje. |
+| `TRUST_PROXY_IP` | — | `false` | Si `true`, el rate-limit usa la IP **real** del cliente (`CF-Connecting-IP`/`X-Forwarded-For`). ⚠️ Poner `true` **solo** con Cloudflare/cloudflared realmente delante (cabeceras falsificables en acceso directo). |
+
+### Infra — `infra/.env` (Docker Compose / Postgres local)
+
+Consumidas por `infra/docker-compose.yml` al levantar Postgres. Deben cuadrar con el `DATABASE_URL` del backend.
+
+| Variable | Default | Descripción |
+|----------|---------|-------------|
+| `POSTGRES_USER` | `exiros` | Usuario del Postgres local. |
+| `POSTGRES_PASSWORD` | `exiros_dev` | Contraseña del Postgres local. |
+| `POSTGRES_DB` | `exiros` | Nombre de la base de datos. |
+| `POSTGRES_PORT` | `5432` | Puerto publicado del contenedor. |
+
+### Web — `web/.env.local` (portal Vite)
+
+⚠️ Solo variables con prefijo `VITE_` llegan al navegador, y se **inyectan al compilar** (`vite build`), no en runtime → cambiar la URL exige **recompilar**.
+
+| Variable | Oblig. | Default | Descripción |
+|----------|:------:|---------|-------------|
+| `VITE_API_URL` | ✅ en prod | `http://localhost:3000` | URL base del backend. En prod, compilar con la URL real (EC2/cloudflared) o la web desplegada pega a `localhost` y falla. |
+| `VITE_POLL_MS` | — | `900000` (15 min) | Periodo de refresco (polling) del mapa en ms. En dev/demo se baja a `10000`–`30000`. |
+
+### Android — parámetros de build (`-P` de Gradle, no env vars de runtime)
+
+El build *release* falla si `EXIROS_API_URL` o `EXIROS_APP_KEY` traen el placeholder (guard anti-placeholder).
+
+| Parámetro | Descripción |
+|-----------|-------------|
+| `EXIROS_API_URL` | URL del backend embebida en el APK release (obligatoria en release). |
+| `EXIROS_APP_KEY` | `APP_KEY` de producción (debe coincidir con la del backend desplegado). |
+| `EXIROS_DEMO_SECONDS` | Modo demo: captura/envía cada N s. Omitir o `=0` → comportamiento de producción. |
+| `EXIROS_DEV_AIDS` | Solo build *debug*: `true` activa ayudas de desarrollo. Omitir en release. |
+
+---
+
 ## 🧱 Stack congelado
 
 | Capa | Tecnología | ADR |
