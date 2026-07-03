@@ -1,7 +1,7 @@
 {
   "name": "exiros-mvp",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "Atajos multiplataforma (Windows/mac/Linux) para levantar y probar Exiros. El detalle paso a paso vive en README.md. Lista de comandos: `npm run`.",
   "scripts": {
     "setup": "npm run install:all && npm run env && npm run db:up && npm run migrate && npm run seed && npm run build",
